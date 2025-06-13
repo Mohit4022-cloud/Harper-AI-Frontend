@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo",
+    "dev": "NODE_OPTIONS='--trace-warnings --trace-deprecation' next dev",
     "dev:clean": "./scripts/dev-clean.sh",
     "dev:debug": "DEBUG=\"next:*\" npm run dev",
     "build": "next build",

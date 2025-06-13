@@ -1,32 +1,9 @@
-import axios from 'axios'
 import { LoginCredentials, AuthResponse, User } from '@/types'
+import { createApiClient, addResponseInterceptor } from '@/lib/api'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
-
-const authApi = axios.create({
-  baseURL: `${API_BASE_URL}/auth`,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-})
-
-// Add response interceptor to handle API responses
-authApi.interceptors.response.use(
-  (response) => {
-    // If the API returns a structured response with success/data, extract the data
-    if (response.data && response.data.success) {
-      return { ...response, data: response.data.data }
-    }
-    return response
-  },
-  (error) => {
-    // Handle API errors
-    if (error.response?.data?.message) {
-      throw new Error(error.response.data.message)
-    }
-    throw error
-  }
-)
+// Create auth API client
+const authApi = createApiClient('auth')
+addResponseInterceptor(authApi)
 
 export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {

@@ -1,56 +1,10 @@
-import axios from 'axios'
 import { Contact, PaginatedResponse } from '@/types'
+import { createApiClient, addAuthInterceptor, addResponseInterceptor } from '@/lib/api'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
-
-const contactApi = axios.create({
-  baseURL: `${API_BASE_URL}/contacts`,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-})
-
-// Add request interceptor to include auth token
-contactApi.interceptors.request.use(
-  (config) => {
-    // Get token from localStorage or auth store
-    const token = localStorage.getItem('auth-storage')
-    if (token) {
-      try {
-        const parsed = JSON.parse(token)
-        if (parsed.state?.token) {
-          config.headers.Authorization = `Bearer ${parsed.state.token}`
-        }
-      } catch (error) {
-        console.error('Error parsing auth token:', error)
-      }
-    }
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
-
-// Add response interceptor to handle API responses
-contactApi.interceptors.response.use(
-  (response) => {
-    if (response.data && response.data.success) {
-      return { 
-        ...response, 
-        data: response.data.data, 
-        pagination: response.data.pagination 
-      } as any  // Type assertion to fix TS error
-    }
-    return response
-  },
-  (error) => {
-    if (error.response?.data?.message) {
-      throw new Error(error.response.data.message)
-    }
-    throw error
-  }
-)
+// Create contacts API client with auth
+const contactApi = createApiClient('contacts')
+addAuthInterceptor(contactApi)
+addResponseInterceptor(contactApi)
 
 export const contactService = {
   async getContacts(params?: {

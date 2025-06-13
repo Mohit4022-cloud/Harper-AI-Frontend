@@ -15,6 +15,13 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  console.log('🏁 Layout loaded at', new Date().toISOString());
+  
+  // Warn about localhost usage in production
+  if (typeof window !== 'undefined' && window.location.href.includes('localhost') && process.env.NODE_ENV === 'production') {
+    console.warn('🛑 WARNING: localhost URL used in production. Fix your env config.');
+  }
+  
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
