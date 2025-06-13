@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuthStore } from '@/stores/authStore'
 import { Eye, EyeOff, Loader2, Mail, Lock } from 'lucide-react'
+import { getApiBaseUrl } from '@/lib/api'
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -34,6 +35,11 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginForm) => {
     try {
+      // Debug: Log the API URL being used
+      console.log('🔗 API Base URL:', getApiBaseUrl())
+      console.log('🔗 Environment:', process.env.NODE_ENV)
+      console.log('🔗 NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL)
+      
       await login(data)
       router.push('/dashboard')
     } catch (error) {

@@ -3,22 +3,25 @@ import axios from 'axios'
 
 /**
  * Get the API base URL for the current environment
- * - Development: Uses window.location.origin or NEXT_PUBLIC_API_URL
  * - Production: Uses NEXT_PUBLIC_API_URL environment variable
+ * - Development: Uses window.location.origin or localhost fallback
  */
 export const getApiBaseUrl = (): string => {
-  // If NEXT_PUBLIC_API_URL is set, use it (production deployment)
+  // Use env variable if available (production)
   if (process.env.NEXT_PUBLIC_API_URL) {
+    console.log('🔗 Using NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL)
     return process.env.NEXT_PUBLIC_API_URL
   }
-  
-  // Fallback to relative URLs in development
+
+  // Client-side fallback (use current domain)
   if (typeof window !== 'undefined') {
+    console.log('🔗 Using window.location.origin:', window.location.origin)
     return window.location.origin
   }
-  
-  // Server-side fallback
-  return ''
+
+  // Default server-side fallback
+  console.log('🔗 Using localhost fallback')
+  return 'http://localhost:3000'
 }
 
 /**
