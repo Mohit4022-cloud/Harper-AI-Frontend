@@ -1,0 +1,677 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for authentication and team management
+model User {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  name            String
+  avatar          String?
+  role            UserRole         @default(SDR)
+  organizationId  String
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  teamId          String?
+  team            Team?            @relation(fields: [teamId], references: [id])
+  isActive        Boolean          @default(true)
+  lastLoginAt     DateTime?
+  phone           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  // Relations
+  assignedContacts Contact[]       @relation("AssignedContacts")
+  createdContacts  Contact[]       @relation("CreatedContacts")
+  activities       Activity[]
+  calls            Call[]
+  emails           Email[]
+  deals            Deal[]
+  tasks            Task[]
+  
+  @@index([organizationId])
+  @@index([teamId])
+  @@index([email])
+}
+
+enum UserRole {
+  ORG_ADMIN
+  SALES_MANAGER
+  TEAM_LEAD
+  SDR
+  ACCOUNT_EXECUTIVE
+}
+
+model Organization {
+  id              String           @id @default(cuid())
+  name            String
+  domain          String?
+  logo            String?
+  subscription    SubscriptionPlan @default(TRIAL)
+  settings        Json             @default("{}")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  // Relations
+  users           User[]
+  teams           Team[]
+  contacts        Contact[]
+  companies       Company[]
+  customFields    CustomField[]
+  emailTemplates  EmailTemplate[]
+  segments        Segment[]
+}
+
+model Team {
+  id              String           @id @default(cuid())
+  name            String
+  organizationId  String
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  managerId       String?
+  settings        Json             @default("{}")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  // Relations
+  users           User[]
+  
+  @@index([organizationId])
+}
+
+// Contact model - the core of the CRM
+model Contact {
+  id              String           @id @default(cuid())
+  firstName       String
+  lastName        String
+  email           String
+  phone           String?
+  title           String?
+  department      String?
+  linkedin        String?
+  twitter         String?
+  
+  // Company relationship
+  companyId       String?
+  company         Company?         @relation(fields: [companyId], references: [id])
+  
+  // Lead information
+  leadStatus      LeadStatus       @default(NEW)
+  leadScore       Int              @default(0)
+  leadSource      String?
+  
+  // Assignment
+  assignedToId    String?
+  assignedTo      User?            @relation("AssignedContacts", fields: [assignedToId], references: [id])
+  createdById     String
+  createdBy       User             @relation("CreatedContacts", fields: [createdById], references: [id])
+  organizationId  String
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  
+  // Custom properties
+  customFields    Json             @default("{}")
+  tags            String[]         @default([])
+  
+  // Enrichment data
+  enrichmentData  Json?
+  enrichmentDate  DateTime?
+  enrichmentSource String?
+  
+  // Timestamps
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  lastContactedAt DateTime?
+  
+  // Relations
+  activities      Activity[]
+  emails          EmailRecipient[]
+  calls           Call[]
+  deals           DealContact[]
+  tasks           Task[]
+  notes           Note[]
+  leadScoreHistory LeadScoreHistory[]
+  segmentContacts SegmentContact[]
+  
+  @@unique([email, organizationId])
+  @@index([organizationId])
+  @@index([assignedToId])
+  @@index([companyId])
+  @@index([leadStatus])
+  @@index([leadScore])
+  @@index([email])
+  @@index([createdAt])
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  UNQUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+  NURTURE
+}
+
+model Company {
+  id              String           @id @default(cuid())
+  name            String
+  domain          String?
+  website         String?
+  industry        String?
+  size            CompanySize?
+  revenue         BigInt?
+  description     String?
+  logo            String?
+  
+  // Address
+  street          String?
+  city            String?
+  state           String?
+  country         String?
+  postalCode      String?
+  
+  // Parent company for hierarchical relationships
+  parentCompanyId String?
+  parentCompany   Company?         @relation("CompanyHierarchy", fields: [parentCompanyId], references: [id])
+  subsidiaries    Company[]        @relation("CompanyHierarchy")
+  
+  // Organization
+  organizationId  String
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  
+  // Custom properties
+  customFields    Json             @default("{}")
+  tags            String[]         @default([])
+  
+  // Enrichment
+  enrichmentData  Json?
+  enrichmentDate  DateTime?
+  
+  // Timestamps
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  // Relations
+  contacts        Contact[]
+  deals           Deal[]
+  
+  @@unique([domain, organizationId])
+  @@index([organizationId])
+  @@index([name])
+  @@index([domain])
+}
+
+enum CompanySize {
+  MICRO        // 1-9 employees
+  SMALL        // 10-49 employees
+  MEDIUM       // 50-249 employees
+  LARGE        // 250-999 employees
+  ENTERPRISE   // 1000+ employees
+}
+
+// Activity tracking
+model Activity {
+  id              String           @id @default(cuid())
+  type            ActivityType
+  subject         String?
+  description     String?
+  
+  // Related entities
+  contactId       String?
+  contact         Contact?         @relation(fields: [contactId], references: [id])
+  dealId          String?
+  deal            Deal?            @relation(fields: [dealId], references: [id])
+  userId          String
+  user            User             @relation(fields: [userId], references: [id])
+  
+  // Activity-specific data
+  metadata        Json             @default("{}")
+  
+  // Timestamps
+  createdAt       DateTime         @default(now())
+  completedAt     DateTime?
+  scheduledAt     DateTime?
+  
+  @@index([contactId])
+  @@index([dealId])
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum ActivityType {
+  EMAIL_SENT
+  EMAIL_OPENED
+  EMAIL_CLICKED
+  EMAIL_REPLIED
+  CALL_MADE
+  CALL_RECEIVED
+  MEETING_SCHEDULED
+  MEETING_COMPLETED
+  NOTE_ADDED
+  TASK_CREATED
+  TASK_COMPLETED
+  DEAL_CREATED
+  DEAL_UPDATED
+  STAGE_CHANGED
+}
+
+// Email tracking
+model Email {
+  id              String           @id @default(cuid())
+  subject         String
+  body            String
+  html            String?
+  
+  // Sender
+  userId          String
+  user            User             @relation(fields: [userId], references: [id])
+  fromEmail       String
+  
+  // Campaign/sequence
+  campaignId      String?
+  sequenceStep    Int?
+  
+  // Tracking
+  status          EmailStatus      @default(DRAFT)
+  sentAt          DateTime?
+  scheduledFor    DateTime?
+  
+  // Metrics
+  opens           Int              @default(0)
+  clicks          Int              @default(0)
+  replies         Int              @default(0)
+  bounces         Int              @default(0)
+  
+  // Timestamps
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  // Relations
+  recipients      EmailRecipient[]
+  
+  @@index([userId])
+  @@index([campaignId])
+  @@index([status])
+  @@index([sentAt])
+}
+
+enum EmailStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  BOUNCED
+}
+
+model EmailRecipient {
+  id              String           @id @default(cuid())
+  emailId         String
+  email           Email            @relation(fields: [emailId], references: [id])
+  contactId       String
+  contact         Contact          @relation(fields: [contactId], references: [id])
+  recipientType   RecipientType    @default(TO)
+  
+  // Tracking
+  opened          Boolean          @default(false)
+  openedAt        DateTime?
+  clicked         Boolean          @default(false)
+  clickedAt       DateTime?
+  replied         Boolean          @default(false)
+  repliedAt       DateTime?
+  bounced         Boolean          @default(false)
+  bouncedAt       DateTime?
+  
+  @@unique([emailId, contactId])
+  @@index([emailId])
+  @@index([contactId])
+}
+
+enum RecipientType {
+  TO
+  CC
+  BCC
+}
+
+// Call tracking
+model Call {
+  id              String           @id @default(cuid())
+  twilioSid       String?          @unique
+  
+  // Participants
+  userId          String
+  user            User             @relation(fields: [userId], references: [id])
+  contactId       String?
+  contact         Contact?         @relation(fields: [contactId], references: [id])
+  
+  // Call details
+  direction       CallDirection
+  phoneNumber     String
+  duration        Int              @default(0) // in seconds
+  status          CallStatus
+  
+  // Recording
+  recordingUrl    String?
+  transcription   String?
+  
+  // AI Analysis
+  sentiment       Float?           // -1 to 1
+  summary         String?
+  keyMoments      Json?
+  coachingNotes   Json?
+  
+  // Timestamps
+  startedAt       DateTime
+  endedAt         DateTime?
+  createdAt       DateTime         @default(now())
+  
+  @@index([userId])
+  @@index([contactId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+enum CallDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum CallStatus {
+  INITIATED
+  RINGING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  NO_ANSWER
+  BUSY
+  VOICEMAIL
+}
+
+// Deal/Opportunity tracking
+model Deal {
+  id              String           @id @default(cuid())
+  name            String
+  value           Decimal
+  probability     Int              @default(0) // 0-100
+  
+  // Stage
+  stage           String
+  stageChangedAt  DateTime         @default(now())
+  
+  // Assignment
+  ownerId         String
+  owner           User             @relation(fields: [ownerId], references: [id])
+  companyId       String?
+  company         Company?         @relation(fields: [companyId], references: [id])
+  
+  // Dates
+  closeDate       DateTime?
+  closedAt        DateTime?
+  
+  // Status
+  status          DealStatus       @default(OPEN)
+  wonReason       String?
+  lostReason      String?
+  
+  // Custom fields
+  customFields    Json             @default("{}")
+  tags            String[]         @default([])
+  
+  // Timestamps
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  // Relations
+  contacts        DealContact[]
+  activities      Activity[]
+  tasks           Task[]
+  notes           Note[]
+  
+  @@index([ownerId])
+  @@index([companyId])
+  @@index([stage])
+  @@index([status])
+  @@index([closeDate])
+}
+
+enum DealStatus {
+  OPEN
+  WON
+  LOST
+}
+
+model DealContact {
+  dealId          String
+  deal            Deal             @relation(fields: [dealId], references: [id])
+  contactId       String
+  contact         Contact          @relation(fields: [contactId], references: [id])
+  role            String?
+  isPrimary       Boolean          @default(false)
+  
+  @@id([dealId, contactId])
+  @@index([dealId])
+  @@index([contactId])
+}
+
+// Task management
+model Task {
+  id              String           @id @default(cuid())
+  title           String
+  description     String?
+  
+  // Assignment
+  assignedToId    String
+  assignedTo      User             @relation(fields: [assignedToId], references: [id])
+  
+  // Related entities
+  contactId       String?
+  contact         Contact?         @relation(fields: [contactId], references: [id])
+  dealId          String?
+  deal            Deal?            @relation(fields: [dealId], references: [id])
+  
+  // Task details
+  priority        TaskPriority     @default(MEDIUM)
+  status          TaskStatus       @default(TODO)
+  dueDate         DateTime?
+  completedAt     DateTime?
+  
+  // Timestamps
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  @@index([assignedToId])
+  @@index([contactId])
+  @@index([dealId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// Notes
+model Note {
+  id              String           @id @default(cuid())
+  content         String
+  
+  // Author
+  userId          String
+  
+  // Related entities
+  contactId       String?
+  contact         Contact?         @relation(fields: [contactId], references: [id])
+  dealId          String?
+  deal            Deal?            @relation(fields: [dealId], references: [id])
+  
+  // Timestamps
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  @@index([contactId])
+  @@index([dealId])
+  @@index([createdAt])
+}
+
+// Lead scoring history
+model LeadScoreHistory {
+  id              String           @id @default(cuid())
+  contactId       String
+  contact         Contact          @relation(fields: [contactId], references: [id])
+  score           Int
+  previousScore   Int
+  reason          String
+  factors         Json             // Detailed scoring factors
+  
+  createdAt       DateTime         @default(now())
+  
+  @@index([contactId])
+  @@index([createdAt])
+}
+
+// Email templates
+model EmailTemplate {
+  id              String           @id @default(cuid())
+  name            String
+  subject         String
+  body            String
+  html            String?
+  
+  // Organization
+  organizationId  String
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  
+  // Template details
+  category        String?
+  tags            String[]         @default([])
+  variables       String[]         @default([]) // e.g., ["first_name", "company"]
+  
+  // Performance metrics
+  useCount        Int              @default(0)
+  avgOpenRate     Float            @default(0)
+  avgClickRate    Float            @default(0)
+  avgReplyRate    Float            @default(0)
+  
+  // Timestamps
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  @@index([organizationId])
+  @@index([category])
+}
+
+// Segments for dynamic grouping
+model Segment {
+  id              String           @id @default(cuid())
+  name            String
+  description     String?
+  
+  // Organization
+  organizationId  String
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  
+  // Segment definition
+  filters         Json             // Query filters
+  isStatic        Boolean          @default(false)
+  
+  // Timestamps
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  lastCalculated  DateTime?
+  
+  // Relations
+  contacts        SegmentContact[]
+  
+  @@index([organizationId])
+}
+
+model SegmentContact {
+  segmentId       String
+  segment         Segment          @relation(fields: [segmentId], references: [id])
+  contactId       String
+  contact         Contact          @relation(fields: [contactId], references: [id])
+  addedAt         DateTime         @default(now())
+  
+  @@id([segmentId, contactId])
+  @@index([segmentId])
+  @@index([contactId])
+}
+
+// Custom fields definition
+model CustomField {
+  id              String           @id @default(cuid())
+  name            String
+  label           String
+  type            CustomFieldType
+  entityType      EntityType
+  
+  // Organization
+  organizationId  String
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  
+  // Field configuration
+  required        Boolean          @default(false)
+  defaultValue    String?
+  options         String[]         @default([]) // For select/multiselect
+  validation      Json?            // Validation rules
+  
+  // Display
+  order           Int              @default(0)
+  section         String?
+  helpText        String?
+  
+  // Timestamps
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  @@unique([name, entityType, organizationId])
+  @@index([organizationId])
+  @@index([entityType])
+}
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DATE
+  DATETIME
+  BOOLEAN
+  SELECT
+  MULTISELECT
+  EMAIL
+  PHONE
+  URL
+  TEXTAREA
+}
+
+enum EntityType {
+  CONTACT
+  COMPANY
+  DEAL
+}
+
+enum SubscriptionPlan {
+  TRIAL
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
