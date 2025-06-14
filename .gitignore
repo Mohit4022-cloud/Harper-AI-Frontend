@@ -85,3 +85,14 @@ logs
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Claude Code specific
+.claude/settings.json
+.claude.json
+.claude.local.md
+CLAUDE.local.md
+*.debug.log
+next.debug.log
+
+# Temporary files
+README_TEMP.md

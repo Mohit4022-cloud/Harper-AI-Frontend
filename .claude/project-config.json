@@ -1,0 +1,31 @@
+{
+  "name": "Harper AI - SDR Platform",
+  "description": "Modern Sales Development Representative platform built with Next.js",
+  "version": "1.0.0",
+  "allowedTools": [
+    "Edit",
+    "Read", 
+    "Write",
+    "Glob",
+    "Grep",
+    "LS",
+    "Bash(npm:*)",
+    "Bash(git:*)",
+    "Bash(next:*)",
+    "Bash(node:*)"
+  ],
+  "commonCommands": {
+    "dev": "npm run dev",
+    "build": "npm run build", 
+    "type-check": "npm run type-check",
+    "lint": "npm run lint",
+    "test": "npm run test"
+  },
+  "testCredentials": {
+    "admin": "admin@harperai.com / password123",
+    "sdr": "sdr@harperai.com / password123", 
+    "demo": "demo@harperai.com / password123"
+  },
+  "deploymentUrl": "https://harper-ai-frontend.onrender.com",
+  "repositoryUrl": "https://github.com/Mohit4022-cloud/Harper-AI-Frontend"
+}
