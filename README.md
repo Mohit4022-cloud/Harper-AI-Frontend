@@ -57,14 +57,32 @@ The Harper AI platform integrates with `productiv-ai-relay` for AI-powered voice
 
 #### Required Dependencies
 
-The relay requires specific Node.js dependencies to be installed in the main project:
+The relay submodule requires the following dependencies in the main project:
 
-```bash
-# Install relay dependencies
-npm install fastify@4.26.0 @fastify/formbody@7.4.0 @fastify/websocket@8.3.1 ws@8.16.0 pino-pretty@10.3.1
+```json
+"dependencies": {
+  "fastify": "4.26.0",
+  "@fastify/formbody": "7.4.0",
+  "@fastify/websocket": "8.3.1",
+  "ws": "^8.18.0",
+  "dotenv": "^16.4.1",
+  "axios": "1.6.5",
+  "twilio": "4.20.0",
+  "pino-pretty": "10.3.1"
+}
 ```
 
-These dependencies are already included in `package.json` and will be installed automatically with `npm install`.
+These are already included in `package.json`. To ensure clean installation:
+
+```bash
+# Clean install
+rm -rf node_modules package-lock.json
+npm install
+
+# Verify build
+npm run build
+npm run start
+```
 
 #### Relay Configuration
 
@@ -105,10 +123,32 @@ Common issues and solutions:
 
 #### Build Configuration
 
-For production deployments (e.g., Render), ensure your build command includes:
+For production deployments (e.g., Render), the build command in `render.yaml` includes:
 
 ```bash
-git submodule update --init --recursive && npm ci && npm run build
+git submodule update --init --recursive && npm ci && cd src/lib/productiv-ai-relay && npm ci && cd ../../.. && npx prisma generate && npm run build
+```
+
+This ensures:
+1. Git submodules are initialized
+2. Main project dependencies are installed
+3. Relay submodule dependencies are installed separately
+4. Prisma client is generated
+5. Next.js production build runs
+
+#### Required Environment Variables
+
+For the relay to start successfully, these must be configured:
+
+```bash
+# Twilio (Required)
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  # Must start with 'AC'
+TWILIO_AUTH_TOKEN=your_auth_token_here
+TWILIO_CALLER_NUMBER=+1234567890  # E.164 format
+
+# ElevenLabs (Required)
+ELEVENLABS_API_KEY=your_api_key_here
+ELEVENLABS_AGENT_ID=your_agent_id_here
 ```
 - **Auto-deployment** - GitHub integration with branch-based deployment
 - **Environment variables** - Production-ready configuration
