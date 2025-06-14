@@ -147,20 +147,43 @@ git push origin feature/new-feature
 ## 🚀 Deployment
 
 ### Environment Variables
-**CRITICAL**: `NEXT_PUBLIC_API_URL` must be set correctly:
-- **Local**: `http://localhost:3000`
-- **Render**: `https://harper-ai-frontend.onrender.com`
+
+#### API URL Configuration
+- **Default**: Uses relative paths (`/api/...`) - recommended
+- **Override**: Set `NEXT_PUBLIC_API_URL` only if needed
+- **Local**: Leave unset (uses relative paths)
+- **Render**: Leave unset or set to `https://harper-ai-frontend-2.onrender.com`
+
+#### Required Environment Variables (Render Dashboard)
+```bash
+# Logging
+LOG_LEVEL=info
+
+# Twilio (required for calling)
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_CALLER_NUMBER=+1234567890
+
+# ElevenLabs (required for AI voice)
+ELEVENLABS_API_KEY=your_api_key
+ELEVENLABS_AGENT_ID=your_agent_id
+ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM
+
+# Webhooks
+BASE_URL=https://harper-ai-frontend-2.onrender.com
+```
 
 ### Twilio & ElevenLabs Integration
 Configuration can be set via:
-1. **UI Settings**: Go to `/settings` → Integrations tab
-2. **Environment Variables** (fallback if not set in UI):
-   - `TWILIO_ACCOUNT_SID`: Your Twilio Account SID
-   - `TWILIO_AUTH_TOKEN`: Your Twilio Auth Token
-   - `TWILIO_CALLER_NUMBER`: Your Twilio phone number (+1234567890)
-   - `ELEVENLABS_API_KEY`: Your ElevenLabs API key
-   - `ELEVENLABS_VOICE_ID`: Voice ID (default: Rachel)
-   - `BASE_URL`: Your deployment URL for webhooks
+1. **UI Settings**: Go to `/settings` → Integrations tab (stored in localStorage)
+2. **Environment Variables** (fallback if not set in UI - see .env.local.example)
+
+### API Architecture
+- **Client → Server**: All API calls use relative paths (`/api/...`)
+- **No CORS issues**: Same-origin requests
+- **Automatic URL resolution**: Works in dev/staging/production
+- **Structured Logging**: JSON logs with request IDs, timestamps, levels
+- **Error Handling**: Sanitized errors to client, full stack traces in logs
 
 ### Deployment Process
 1. **Main branch** auto-deploys to: https://harper-ai-frontend.onrender.com

@@ -6,13 +6,9 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData()
     const digits = formData.get('Digits') as string
     
-    // Get settings from API
-    const settingsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/settings`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
+    // Get settings from in-memory store
+    const settingsModule = await import('@/app/api/settings/route')
+    const settingsResponse = await settingsModule.GET(req)
     
     const settingsData = await settingsResponse.json()
     const settings = settingsData.data?.integrations

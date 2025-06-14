@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { UserSettings, UserSettingsSchema, defaultUserSettings } from '@/types/settings'
+import { api } from '@/lib/api-client'
 
 interface SettingsState {
   settings: UserSettings
@@ -43,20 +44,14 @@ export const useSettingsStore = create<SettingsState>()(
 
           // Otherwise try to fetch from API
           try {
-            const response = await fetch('/api/settings')
+            const response = await api.get<{ success: boolean; data: UserSettings; error?: string }>('/api/settings')
             
-            if (!response.ok) {
-              throw new Error('Failed to fetch settings')
-            }
-            
-            const data = await response.json()
-            
-            if (data.success) {
+            if (response && response.data) {
               // Validate settings with schema
-              const validatedSettings = UserSettingsSchema.parse(data.data)
+              const validatedSettings = UserSettingsSchema.parse(response.data)
               set({ settings: validatedSettings, loading: false })
             } else {
-              throw new Error(data.error || 'Failed to fetch settings')
+              throw new Error('Failed to fetch settings')
             }
           } catch (apiError) {
             // API failed, but that's okay - use default settings
@@ -106,13 +101,7 @@ export const useSettingsStore = create<SettingsState>()(
           
           // Optionally try to sync with server (but don't fail if it doesn't work)
           try {
-            await fetch('/api/settings', {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(validatedSettings),
-            })
+            await api.put('/api/settings', validatedSettings)
           } catch (apiError) {
             console.warn('Failed to sync settings with server, but local save succeeded:', apiError)
           }

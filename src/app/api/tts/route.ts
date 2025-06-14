@@ -14,13 +14,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Get settings from API
-    const settingsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/settings`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
+    // Get settings from in-memory store
+    const settingsModule = await import('@/app/api/settings/route')
+    const settingsResponse = await settingsModule.GET(req)
     
     const settingsData = await settingsResponse.json()
     const settings = settingsData.data?.integrations
@@ -97,13 +93,10 @@ export async function POST(req: NextRequest) {
 
 // GET endpoint to check if TTS is configured
 export async function GET() {
-  // Get settings from API
-  const settingsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/settings`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  })
+  // Get settings from in-memory store
+  const settingsModule = await import('@/app/api/settings/route')
+  const dummyReq = { headers: new Headers() } as any
+  const settingsResponse = await settingsModule.GET(dummyReq)
   
   const settingsData = await settingsResponse.json()
   const settings = settingsData.data?.integrations

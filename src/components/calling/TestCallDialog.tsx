@@ -18,6 +18,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/components/ui/use-toast'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { api } from '@/lib/api-client'
 
 interface CallResponse {
   success: boolean
@@ -78,17 +79,9 @@ export function TestCallDialog() {
     setCallDetails(null)
 
     try {
-      const response = await fetch('/api/call/start', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ phone: e164Phone }),
-      })
+      const data = await api.post<CallResponse>('/api/call/start', { phone: e164Phone })
 
-      const data: CallResponse = await response.json()
-
-      if (response.ok && data.success) {
+      if (data.success) {
         setCallStatus('success')
         setCallDetails(data)
         setCurrentCallSid(data.callSid || null)
@@ -106,16 +99,16 @@ export function TestCallDialog() {
           variant: 'destructive',
         })
       }
-    } catch (error) {
+    } catch (error: any) {
       setCallStatus('error')
       setCallDetails({
         success: false,
-        error: 'Network error',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        error: error.message || 'Network error',
+        details: error.details || 'Unable to connect to the server',
       })
       toast({
-        title: 'Network error',
-        description: 'Failed to connect to the server',
+        title: 'Unable to start call',
+        description: 'Please check your network connection or Twilio credentials.',
         variant: 'destructive',
       })
     } finally {
@@ -138,12 +131,9 @@ export function TestCallDialog() {
 
     const pollTranscript = async () => {
       try {
-        const response = await fetch(`/api/call/transcript?callSid=${currentCallSid}`)
-        if (response.ok) {
-          const data = await response.json()
-          if (data.transcript && data.transcript.length > 0) {
-            setTranscript(data.transcript)
-          }
+        const data = await api.get(`/api/call/transcript?callSid=${currentCallSid}`)
+        if (data.transcript && data.transcript.length > 0) {
+          setTranscript(data.transcript)
         }
       } catch (error) {
         console.error('Error fetching transcript:', error)

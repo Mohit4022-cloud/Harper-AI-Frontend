@@ -38,6 +38,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { api } from '@/lib/api-client'
 
 // Integration form schema
 const IntegrationFormSchema = z.object({
@@ -168,13 +169,7 @@ export function IntegrationSettings() {
     
     try {
       const endpoint = service === 'twilio' ? '/api/test/twilio' : '/api/test/elevenlabs'
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form.getValues()),
-      })
-      
-      const result = await response.json()
+      const result = await api.post(endpoint, form.getValues())
       
       if (result.success) {
         toast({
@@ -184,10 +179,10 @@ export function IntegrationSettings() {
       } else {
         throw new Error(result.error || 'Connection failed')
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Connection failed',
-        description: error instanceof Error ? error.message : 'Unable to connect to service',
+        description: error.message || 'Unable to connect to service. Please check your credentials.',
         variant: 'destructive',
       })
     } finally {
