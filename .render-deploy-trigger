@@ -1,0 +1,7 @@
+# Render Deploy Trigger
+# Update this file to force a new deployment on Render
+
+Deploy trigger: 2025-06-14T09:47:00Z
+Latest commit: 0af3c84d
+Features: Contact Management System Phase 1 Complete
+Force deploy: true

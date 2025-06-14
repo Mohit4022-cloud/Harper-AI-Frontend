@@ -66,7 +66,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<HealthChec
     success: true,
     status,
     timestamp: new Date().toISOString(),
-    version: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
+    version: process.env.NEXT_PUBLIC_APP_VERSION || '1.1.0',
     environment: process.env.NODE_ENV || 'development',
     services,
     uptime: process.uptime(),
