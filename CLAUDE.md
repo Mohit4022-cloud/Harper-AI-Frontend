@@ -189,15 +189,15 @@ git push origin feature/new-feature
 - `/register` - User registration  
 - `/forgot-password` - Password reset
 - `/dashboard` - Main dashboard with metrics
-- `/contacts` - Contact management (placeholder)
-- `/calling` - Twilio calling (placeholder)
-- `/email` - Email campaigns (placeholder)
+- `/contacts` - Contact management with full CRUD
+- `/calling` - AI-powered calling with CSV upload
+- `/email` - Email personalization with contact selection
 - `/pipeline` - Sales pipeline (placeholder)
-- `/calendar` - Meeting scheduling (placeholder)
-- `/reports` - Analytics (placeholder)
+- `/calendar` - Calendar with event management
+- `/reports` - Analytics dashboard
 - `/team` - Team management (placeholder)
 - `/playbooks` - Sales scripts (placeholder)
-- `/settings` - Account settings (placeholder)
+- `/settings` - Account settings with theme, profile, notifications
 
 ### 🚧 Placeholder Pattern
 All placeholder pages use this UX pattern:
@@ -222,19 +222,26 @@ All placeholder pages use this UX pattern:
 - **Global 404**: Professional fallback page with navigation
 - **Auth protection**: Dashboard routes require valid authentication
 - **Error boundaries**: Graceful error handling throughout app
+- **Theme persistence**: Dark/light mode saved to localStorage
+- **Contact unification**: Single source of truth for all contact data
+
+## 💡 User Preferences
+
+### Claude Code Assistant Settings
+- **Minimal code output**: Don't show full code blocks, just progress updates
+- **Concise responses**: Keep explanations brief and action-focused
+- **Progress updates**: Regular status updates on what's being done
 
 ## 💡 Next Steps / TODO
 
 - [ ] Implement real authentication (replace mock system)
 - [ ] Add Twilio Voice SDK integration
-- [ ] Build contact management CRUD operations
 - [ ] Add email campaign functionality
 - [ ] Implement sales pipeline tracking
-- [ ] Add calendar/meeting scheduling
-- [ ] Build analytics and reporting
-- [ ] Add team management features
-- [ ] Create sales playbooks system
 - [ ] Add comprehensive test suite
+- [ ] Backend API integration
+- [ ] Real-time features with WebSockets
+- [ ] Advanced AI features (lead scoring, enrichment)
 
 ---
 

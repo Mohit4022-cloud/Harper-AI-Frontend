@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PhoneCall, Users, History, Settings, Sparkles, Upload } from 'lucide-react';
+import { PhoneCall, Users, History, Settings, Sparkles, Upload, Phone } from 'lucide-react';
 import Dialer from '@/app/calling/components/Dialer';
 import TranscriptDisplay from '@/app/calling/components/TranscriptDisplay';
 import CoachingCards from '@/app/calling/components/CoachingCards';
@@ -17,6 +17,7 @@ import { AutoDialer } from '@/components/calling/AutoDialer';
 import { LiveTranscript } from '@/components/calling/LiveTranscript';
 import { CallHistoryTable } from '@/components/calling/CallHistoryTable';
 import { ContactsTable } from '@/components/calling/ContactsTable';
+import { TestCallDialog } from '@/components/calling/TestCallDialog';
 
 import { useCallStore } from '@/stores/callStore';
 import { useCallQueueStore } from '@/stores/callQueueStore';
@@ -281,6 +282,22 @@ export default function CallingPage() {
           </Button>
         </div>
       </div>
+
+      {/* Test Call Section */}
+      <Card className="p-6 mb-6 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-700">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <Phone className="h-5 w-5" />
+              Test Twilio + ElevenLabs Integration
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Make a test call to verify your Twilio and ElevenLabs setup
+            </p>
+          </div>
+          <TestCallDialog />
+        </div>
+      </Card>
 
       {/* CSV Uploader */}
       <CSVUploader />
