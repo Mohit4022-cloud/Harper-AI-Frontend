@@ -51,18 +51,18 @@ export function Sidebar() {
   return (
     <div
       className={cn(
-        'flex h-screen flex-col bg-white border-r border-gray-200 transition-all duration-300',
+        'flex h-screen flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transition-all duration-300',
         isCollapsed ? 'w-16' : 'w-64'
       )}
     >
       {/* Header */}
-      <div className="flex h-16 items-center justify-between px-4 border-b border-gray-200">
+      <div className="flex h-16 items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700">
         {!isCollapsed && (
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 gradient-purple-pink rounded-lg flex items-center justify-center">
               <span className="text-sm font-bold text-white">H</span>
             </div>
-            <span className="text-xl font-bold text-gray-900">Harper AI</span>
+            <span className="text-xl font-bold text-gray-900 dark:text-gray-100">Harper AI</span>
           </div>
         )}
         <Button

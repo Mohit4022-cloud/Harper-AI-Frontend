@@ -11,6 +11,8 @@ interface SettingsState {
   fetchSettings: () => Promise<void>
   updateSettings: (updates: Partial<UserSettings>) => Promise<void>
   resetSettings: () => void
+  setTheme: (theme: 'light' | 'dark' | 'system') => void
+  initializeTheme: () => void
 }
 
 /**
@@ -118,6 +120,73 @@ export const useSettingsStore = create<SettingsState>()(
        */
       resetSettings: () => {
         set({ settings: defaultUserSettings, error: null })
+      },
+
+      /**
+       * Set theme immediately and persist to localStorage
+       */
+      setTheme: (theme: 'light' | 'dark' | 'system') => {
+        // Update store
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            theme,
+          },
+        }))
+        
+        // Save to localStorage immediately
+        localStorage.setItem('harper-theme', theme)
+        
+        // Apply theme to document
+        const root = window.document.documentElement
+        root.classList.remove('light', 'dark')
+        
+        if (theme === 'system') {
+          const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          root.classList.add(systemTheme)
+        } else {
+          root.classList.add(theme)
+        }
+      },
+
+      /**
+       * Initialize theme from localStorage or system preference
+       */
+      initializeTheme: () => {
+        // Try to get theme from localStorage
+        const savedTheme = localStorage.getItem('harper-theme') as 'light' | 'dark' | 'system' | null
+        
+        // Determine the theme to use
+        const theme = savedTheme || 'system'
+        
+        // Update store
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            theme,
+          },
+        }))
+        
+        // Apply theme to document
+        const root = window.document.documentElement
+        root.classList.remove('light', 'dark')
+        
+        if (theme === 'system') {
+          const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          root.classList.add(systemTheme)
+          
+          // Listen for system theme changes
+          const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+          const handleChange = (e: MediaQueryListEvent) => {
+            if (get().settings.theme === 'system') {
+              root.classList.remove('light', 'dark')
+              root.classList.add(e.matches ? 'dark' : 'light')
+            }
+          }
+          mediaQuery.addEventListener('change', handleChange)
+        } else {
+          root.classList.add(theme)
+        }
       },
     }),
     {

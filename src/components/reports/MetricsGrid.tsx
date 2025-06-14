@@ -48,7 +48,7 @@ export function MetricsGrid({ metrics, previousMetrics }: MetricsGridProps) {
     return {
       value: Math.abs(change).toFixed(1),
       icon: isNeutral ? Minus : isPositive ? TrendingUp : TrendingDown,
-      color: isNeutral ? 'text-gray-500' : isPositive ? 'text-green-600' : 'text-red-600',
+      color: isNeutral ? 'text-gray-500 dark:text-gray-400' : isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400',
     }
   }
 
@@ -57,8 +57,8 @@ export function MetricsGrid({ metrics, previousMetrics }: MetricsGridProps) {
       title: 'Total Calls',
       value: metrics.totalCalls.toString(),
       icon: Phone,
-      iconColor: 'text-blue-600',
-      bgColor: 'bg-blue-50',
+      iconColor: 'text-blue-600 dark:text-blue-400',
+      bgColor: 'bg-blue-50 dark:bg-blue-900/20',
       change: getChangeIndicator(metrics.totalCalls, previousMetrics?.totalCalls),
       subtext: `${metrics.connectRate}% connect rate`,
     },
@@ -66,8 +66,8 @@ export function MetricsGrid({ metrics, previousMetrics }: MetricsGridProps) {
       title: 'Meetings Scheduled',
       value: metrics.meetingsScheduled.toString(),
       icon: Calendar,
-      iconColor: 'text-purple-600',
-      bgColor: 'bg-purple-50',
+      iconColor: 'text-purple-600 dark:text-purple-400',
+      bgColor: 'bg-purple-50 dark:bg-purple-900/20',
       change: getChangeIndicator(metrics.meetingsScheduled, previousMetrics?.meetingsScheduled),
       subtext: `${metrics.meetingConversionRate}% conversion`,
     },
@@ -75,8 +75,8 @@ export function MetricsGrid({ metrics, previousMetrics }: MetricsGridProps) {
       title: 'New Contacts',
       value: metrics.newContacts.toString(),
       icon: Users,
-      iconColor: 'text-green-600',
-      bgColor: 'bg-green-50',
+      iconColor: 'text-green-600 dark:text-green-400',
+      bgColor: 'bg-green-50 dark:bg-green-900/20',
       change: getChangeIndicator(metrics.newContacts, previousMetrics?.newContacts),
       subtext: `${metrics.totalContacts} total`,
     },

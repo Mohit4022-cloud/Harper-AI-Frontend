@@ -63,11 +63,11 @@
 
 @layer components {
   .sidebar-nav-item {
-    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary;
+    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-accent/50;
   }
   
   .sidebar-nav-item.active {
-    @apply bg-muted text-primary;
+    @apply bg-muted text-primary dark:bg-gray-800;
   }
   
   .gradient-purple-pink {

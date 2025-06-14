@@ -21,32 +21,32 @@ const metrics = [
     value: '24',
     change: '+12%',
     icon: Phone,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
+    color: 'text-blue-600 dark:text-blue-400',
+    bgColor: 'bg-blue-100 dark:bg-blue-900/20',
   },
   {
     title: 'Emails Sent',
     value: '156',
     change: '+8%',
     icon: Mail,
-    color: 'text-green-600',
-    bgColor: 'bg-green-100',
+    color: 'text-green-600 dark:text-green-400',
+    bgColor: 'bg-green-100 dark:bg-green-900/20',
   },
   {
     title: 'New Leads',
     value: '18',
     change: '+23%',
     icon: Users,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-100',
+    color: 'text-purple-600 dark:text-purple-400',
+    bgColor: 'bg-purple-100 dark:bg-purple-900/20',
   },
   {
     title: 'Deals Won',
     value: '5',
     change: '+15%',
     icon: Target,
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-100',
+    color: 'text-yellow-600 dark:text-yellow-400',
+    bgColor: 'bg-yellow-100 dark:bg-yellow-900/20',
   },
 ]
 
@@ -130,8 +130,8 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-1">Welcome back! Here's your performance overview.</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Welcome back! Here's your performance overview.</p>
         </div>
         <div className="flex items-center space-x-3">
           <Button variant="outline" className="flex items-center gap-2">
@@ -152,9 +152,9 @@ export default function DashboardPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">{metric.title}</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{metric.value}</p>
-                  <p className="text-sm text-green-600 mt-1">{metric.change} from yesterday</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{metric.title}</p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-2">{metric.value}</p>
+                  <p className="text-sm text-green-600 dark:text-green-400 mt-1">{metric.change} from yesterday</p>
                 </div>
                 <div className={`p-3 rounded-full ${metric.bgColor}`}>
                   <metric.icon className={`h-6 w-6 ${metric.color}`} />

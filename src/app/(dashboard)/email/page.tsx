@@ -221,7 +221,7 @@ export default function EmailPage() {
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">AI Email Personalization</h1>
+        <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-gray-100">AI Email Personalization</h1>
         <p className="text-muted-foreground">Generate hyper-personalized cold emails at scale</p>
       </div>
 
