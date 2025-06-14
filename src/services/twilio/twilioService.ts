@@ -1,14 +1,6 @@
 import { Device } from '@twilio/voice-sdk';
 import { v4 as uuidv4 } from 'uuid';
-
-export interface TwilioConfig {
-  accountSid: string;
-  authToken: string;
-  apiKey: string;
-  apiSecret: string;
-  twimlAppSid: string;
-  phoneNumber: string;
-}
+import { getPublicTwilioConfig } from '@/config/twilio';
 
 export interface CallOptions {
   to: string;
@@ -21,7 +13,8 @@ export interface CallOptions {
 export interface TwilioTokenResponse {
   token: string;
   identity: string;
-  expiresAt: Date;
+  expiresAt: string;
+  isDevelopment?: boolean;
 }
 
 class TwilioService {
@@ -89,17 +82,22 @@ class TwilioService {
       throw new Error('Twilio Device not initialized');
     }
 
+    const twilioConfig = getPublicTwilioConfig();
+    if (!twilioConfig || !twilioConfig.isEnabled) {
+      throw new Error('Twilio calling is not enabled');
+    }
+
     try {
       const params: Record<string, string> = {
         To: options.to,
-        From: options.from || process.env.NEXT_PUBLIC_TWILIO_PHONE_NUMBER || '+1234567890',
-        RecordingEnabled: String(options.recordingEnabled || true),
-        TranscriptionEnabled: String(options.transcriptionEnabled || true),
+        From: options.from || twilioConfig.callerNumber || twilioConfig.phoneNumber,
+        RecordingEnabled: String(options.recordingEnabled !== false), // Default true
+        TranscriptionEnabled: String(options.transcriptionEnabled !== false), // Default true
         ...options.customParameters,
       };
 
       this.currentCall = await this.device.connect({ params });
-      const callSid = this.currentCall.parameters.CallSid;
+      const callSid = this.currentCall.parameters.CallSid || `mock-${Date.now()}`;
 
       this.setupCallListeners(callSid);
       

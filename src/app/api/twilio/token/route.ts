@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
+import { getTwilioConfig } from '@/config/twilio';
+import { verifyToken } from '@/lib/jwt';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,6 +11,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const token = authHeader.substring(7);
+    const payload = verifyToken(token);
+    
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { identity } = body;
 
@@ -16,18 +25,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Identity is required' }, { status: 400 });
     }
 
-    // In production, use actual Twilio credentials from environment variables
-    const accountSid = process.env.TWILIO_ACCOUNT_SID || 'ACmock';
-    const apiKey = process.env.TWILIO_API_KEY || 'SKmock';
-    const apiSecret = process.env.TWILIO_API_SECRET || 'mocksecret';
-    const appSid = process.env.TWILIO_TWIML_APP_SID || 'APmock';
+    // Get Twilio configuration
+    const twilioConfig = getTwilioConfig();
+    
+    if (!twilioConfig || !twilioConfig.isEnabled) {
+      return NextResponse.json({ error: 'Twilio calling is not enabled' }, { status: 503 });
+    }
 
     // For development/demo, return a mock token
-    if (!process.env.TWILIO_ACCOUNT_SID || process.env.NODE_ENV === 'development') {
+    if (twilioConfig.isDevelopment) {
       const mockToken = jwt.sign(
         {
           identity,
           exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour
+          grants: {
+            voice: {
+              outgoing: { application_sid: twilioConfig.twimlAppSid },
+              incoming: { allow: true },
+            },
+          },
         },
         'mock-secret'
       );
@@ -36,20 +52,25 @@ export async function POST(request: NextRequest) {
         token: mockToken,
         identity,
         expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        isDevelopment: true,
       });
     }
 
     // In production, generate actual Twilio access token
-    // This would use the Twilio Node.js SDK
+    // TODO: Install and use Twilio SDK for production
+    // npm install twilio
     // const AccessToken = require('twilio').jwt.AccessToken;
     // const VoiceGrant = AccessToken.VoiceGrant;
     
-    // const token = new AccessToken(accountSid, apiKey, apiSecret, {
-    //   identity: identity,
-    // });
+    // const token = new AccessToken(
+    //   twilioConfig.accountSid, 
+    //   twilioConfig.apiKey, 
+    //   twilioConfig.apiSecret,
+    //   { identity: identity }
+    // );
     
     // const voiceGrant = new VoiceGrant({
-    //   outgoingApplicationSid: appSid,
+    //   outgoingApplicationSid: twilioConfig.twimlAppSid,
     //   incomingAllow: true,
     // });
     
@@ -61,25 +82,26 @@ export async function POST(request: NextRequest) {
     //   expiresAt: new Date(Date.now() + 3600000).toISOString(),
     // });
 
-    // For now, return mock token
+    // For now, return mock token for production too
     const mockToken = jwt.sign(
       {
         identity,
         grants: {
           voice: {
-            outgoing: { application_sid: appSid },
+            outgoing: { application_sid: twilioConfig.twimlAppSid },
             incoming: { allow: true },
           },
         },
         exp: Math.floor(Date.now() / 1000) + 3600,
       },
-      apiSecret
+      twilioConfig.apiSecret
     );
 
     return NextResponse.json({
       token: mockToken,
       identity,
       expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      isDevelopment: false,
     });
   } catch (error) {
     console.error('Error generating Twilio token:', error);
