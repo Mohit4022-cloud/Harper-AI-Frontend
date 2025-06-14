@@ -27,6 +27,38 @@ const logFile = fs.createWriteStream('./next.debug.log', { flags: 'a' });
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Minimal config for debugging
+  reactStrictMode: true,
+  images: {
+    domains: ['localhost'],
+  },
+  async headers() {
+    return [
+      {
+        // Apply these headers to all API routes
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: process.env.NODE_ENV === 'development' 
+              ? '*' 
+              : 'https://harper-ai-frontend-1.onrender.com'
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PUT, DELETE, OPTIONS'
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization'
+          },
+          {
+            key: 'Access-Control-Max-Age',
+            value: '86400'
+          }
+        ]
+      }
+    ]
+  }
 };
 
 module.exports = nextConfig;
