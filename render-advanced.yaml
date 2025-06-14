@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: harper-ai-advanced-features
+    name: harper-ai-frontend-1
     env: node
     region: oregon
     plan: free
@@ -10,9 +10,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: NEXT_PUBLIC_API_URL
-        value: https://harper-ai-advanced-features.onrender.com
+        value: https://harper-ai-frontend-1.onrender.com
       - key: NEXT_PUBLIC_WS_URL
-        value: wss://harper-ai-advanced-features.onrender.com
+        value: wss://harper-ai-frontend-1.onrender.com
       - key: ENABLE_REAL_TIME_TRANSCRIPTION
         value: "true"
       - key: ENABLE_AI_COACHING
@@ -33,5 +33,21 @@ services:
         value: "100"
       - key: LOG_LEVEL
         value: debug
+      # Note: Add API keys manually in Render dashboard:
+      # - ELEVENLABS_API_KEY
+      # - ELEVENLABS_AGENT_ID  
+      # - TWILIO_ACCOUNT_SID
+      # - TWILIO_AUTH_TOKEN
+      # - TWILIO_CALLER_NUMBER
+      - key: NEXT_PUBLIC_ENABLE_CALLING
+        value: "true"
+      - key: NEXT_PUBLIC_ENABLE_RECORDING
+        value: "true"
+      - key: NEXT_PUBLIC_ENABLE_TRANSCRIPTION
+        value: "true"
+      - key: NEXT_PUBLIC_ENABLE_AI_COACHING
+        value: "true"
+      - key: NEXT_PUBLIC_ENABLE_REAL_TIME_TRANSCRIPTION
+        value: "true"
     branch: feature/advanced-ai-features
     repo: https://github.com/Mohit4022-cloud/Harper-AI-Frontend.git
