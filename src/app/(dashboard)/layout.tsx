@@ -15,7 +15,10 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!token || !user) {
+      console.log('🔒 No auth token/user, redirecting to login')
       router.push('/login')
+    } else {
+      console.log('✅ Dashboard auth check passed:', { hasToken: !!token, hasUser: !!user })
     }
   }, [token, user, router])
 

@@ -113,6 +113,18 @@ const upcomingTasks = [
 ]
 
 export default function DashboardPage() {
+  // Debug logging for production issues
+  if (typeof window !== 'undefined') {
+    console.log('🏠 Dashboard loaded successfully')
+    
+    // Check for potential null data issues
+    const hasInvalidActivity = recentActivities.some(activity => !activity || !activity.type)
+    const hasInvalidTask = upcomingTasks.some(task => !task || !task.id)
+    
+    if (hasInvalidActivity) console.warn('⚠️ Found invalid activity data')
+    if (hasInvalidTask) console.warn('⚠️ Found invalid task data')
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -168,29 +180,30 @@ export default function DashboardPage() {
                 <div key={activity.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="p-2 rounded-full bg-white">
-                      {activity.type === 'call' && <Phone className="h-4 w-4 text-blue-600" />}
-                      {activity.type === 'email' && <Mail className="h-4 w-4 text-green-600" />}
-                      {activity.type === 'meeting' && <Calendar className="h-4 w-4 text-purple-600" />}
+                      {activity?.type === 'call' && <Phone className="h-4 w-4 text-blue-600" />}
+                      {activity?.type === 'email' && <Mail className="h-4 w-4 text-green-600" />}
+                      {activity?.type === 'meeting' && <Calendar className="h-4 w-4 text-purple-600" />}
+                      {!activity?.type && <Activity className="h-4 w-4 text-gray-600" />}
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{activity.contact}</p>
-                      <p className="text-sm text-gray-600">{activity.company}</p>
+                      <p className="font-medium text-gray-900">{activity?.contact || 'Unknown Contact'}</p>
+                      <p className="text-sm text-gray-600">{activity?.company || 'Unknown Company'}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-gray-500">{activity.time}</p>
+                    <p className="text-sm text-gray-500">{activity?.time || 'Unknown time'}</p>
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        activity.status === 'completed'
+                        activity?.status === 'completed'
                           ? 'bg-green-100 text-green-800'
-                          : activity.status === 'sent'
+                          : activity?.status === 'sent'
                           ? 'bg-blue-100 text-blue-800'
-                          : activity.status === 'scheduled'
+                          : activity?.status === 'scheduled'
                           ? 'bg-yellow-100 text-yellow-800'
                           : 'bg-red-100 text-red-800'
                       }`}
                     >
-                      {activity.status}
+                      {activity?.status || 'unknown'}
                     </span>
                   </div>
                 </div>
@@ -210,21 +223,21 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-3">
               {upcomingTasks.map((task) => (
-                <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={task?.id || Math.random()} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex-1">
-                    <p className="font-medium text-gray-900 text-sm">{task.task}</p>
-                    <p className="text-xs text-gray-500 mt-1">{task.time}</p>
+                    <p className="font-medium text-gray-900 text-sm">{task?.task || 'Unknown task'}</p>
+                    <p className="text-xs text-gray-500 mt-1">{task?.time || 'No time set'}</p>
                   </div>
                   <span
                     className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      task.priority === 'high'
+                      task?.priority === 'high'
                         ? 'bg-red-100 text-red-800'
-                        : task.priority === 'medium'
+                        : task?.priority === 'medium'
                         ? 'bg-yellow-100 text-yellow-800'
                         : 'bg-gray-100 text-gray-800'
                     }`}
                   >
-                    {task.priority}
+                    {task?.priority || 'low'}
                   </span>
                 </div>
               ))}
