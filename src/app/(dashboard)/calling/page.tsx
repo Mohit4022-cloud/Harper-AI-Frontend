@@ -4,14 +4,23 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PhoneCall, Users, History, Settings, Sparkles, AlertCircle } from 'lucide-react';
+import { PhoneCall, Users, History, Settings, Sparkles, Upload } from 'lucide-react';
 import Dialer from '@/app/calling/components/Dialer';
 import TranscriptDisplay from '@/app/calling/components/TranscriptDisplay';
 import CoachingCards from '@/app/calling/components/CoachingCards';
 import CallAnalytics from '@/app/calling/components/CallAnalytics';
 import CallHistory from '@/app/calling/components/CallHistory';
+
+// New components
+import { CSVUploader } from '@/components/calling/CSVUploader';
+import { AutoDialer } from '@/components/calling/AutoDialer';
+import { LiveTranscript } from '@/components/calling/LiveTranscript';
+import { CallHistoryTable } from '@/components/calling/CallHistoryTable';
+import { ContactsTable } from '@/components/calling/ContactsTable';
+
 import { useCallStore } from '@/stores/callStore';
-import twilioService from '@/services/twilio/twilioService';
+import { useCallQueueStore } from '@/stores/callQueueStore';
+// import twilioService from '@/services/twilio/twilioService'; // TODO: Implement when Twilio service is ready
 import TranscriptionService from '@/services/ai/transcriptionService';
 import { TranscriptSegment } from '@/types/transcript';
 import { CoachingCard, CallAnalytics as ICallAnalytics } from '@/types/advanced';
@@ -27,24 +36,21 @@ export default function CallingPage() {
   const [coachingCards, setCoachingCards] = useState<CoachingCard[]>([]);
   const [callAnalytics, setCallAnalytics] = useState<ICallAnalytics | null>(null);
   const [transcriptionService, setTranscriptionService] = useState<TranscriptionService | null>(null);
+  const [twilioDevice, setTwilioDevice] = useState<any>(null);
+  const [isDeviceReady, setIsDeviceReady] = useState(false);
+
+  const { 
+    activeCall, 
+    addTranscriptLine, 
+    queue,
+    currentIndex 
+  } = useCallQueueStore();
 
   // Initialize Twilio on component mount
   useEffect(() => {
-    const initializeTwilio = async () => {
-      try {
-        await twilioService.initialize();
-        console.log('Twilio initialized successfully');
-      } catch (error) {
-        console.error('Failed to initialize Twilio:', error);
-      }
-    };
-
-    initializeTwilio();
-
-    // Cleanup on unmount
-    return () => {
-      twilioService.destroy();
-    };
+    // TODO: Implement actual Twilio service when available
+    setIsDeviceReady(false); // Keep in mock mode
+    console.log('Running in mock mode - Twilio not configured');
   }, []);
 
   // Call duration timer
@@ -57,6 +63,11 @@ export default function CallingPage() {
     }
     return () => clearInterval(interval);
   }, [isCallActive, isOnHold]);
+
+  // Sync with auto-dialer state
+  useEffect(() => {
+    setIsCallActive(!!activeCall && activeCall.status === 'connected');
+  }, [activeCall]);
 
   const handleCall = async (phoneNumber: string) => {
     try {
@@ -127,6 +138,12 @@ export default function CallingPage() {
     const interval = setInterval(() => {
       if (index < mockTranscript.length && isCallActive) {
         const segment = mockTranscript[index];
+        const transcriptLine = `${segment.role === 'agent' ? 'AI' : 'Prospect'}: ${segment.text}`;
+        
+        // Add to queue store for live transcript
+        addTranscriptLine(transcriptLine);
+        
+        // Also update local state for backward compatibility
         setTranscriptSegments(prev => [...prev, {
           speaker: segment.role as 'agent' | 'customer',
           text: segment.text,
@@ -174,7 +191,7 @@ export default function CallingPage() {
 
   const handleEndCall = async () => {
     try {
-      await twilioService.endCall();
+      // TODO: await twilioService.endCall();
       
       if (transcriptionService) {
         await transcriptionService.stopTranscription();
@@ -191,7 +208,7 @@ export default function CallingPage() {
 
   const handleToggleMute = async (muted: boolean) => {
     try {
-      await twilioService.muteCall(muted);
+      // TODO: await twilioService.muteCall(muted);
       setIsMuted(muted);
     } catch (error) {
       console.error('Failed to toggle mute:', error);
@@ -265,10 +282,44 @@ export default function CallingPage() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Dialer and Controls */}
-        <div className="lg:col-span-1 space-y-6">
+      {/* CSV Uploader */}
+      <CSVUploader />
+
+      {/* Main Content - New Layout */}
+      <div className="grid grid-cols-12 gap-6">
+        {/* Left Column - Queue & Controls */}
+        <div className="col-span-12 lg:col-span-3 space-y-6">
+          {/* Auto Dialer */}
+          <AutoDialer device={twilioDevice} isDeviceReady={isDeviceReady} />
+          
+          {/* Queue Info */}
+          {queue.length > 0 && (
+            <Card className="p-4">
+              <h3 className="font-medium mb-2">Call Queue</h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {queue.slice(currentIndex, currentIndex + 5).map((contact, idx) => (
+                  <div 
+                    key={contact.id} 
+                    className={`text-sm p-2 rounded ${idx === 0 ? 'bg-primary/10 font-medium' : ''}`}
+                  >
+                    <p>{contact.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {contact.company} • {contact.title}
+                    </p>
+                  </div>
+                ))}
+                {queue.length > currentIndex + 5 && (
+                  <p className="text-xs text-muted-foreground">
+                    ... and {queue.length - currentIndex - 5} more
+                  </p>
+                )}
+              </div>
+            </Card>
+          )}
+        </div>
+
+        {/* Center Column - Dialer & Transcript */}
+        <div className="col-span-12 lg:col-span-5 space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="dialer">
@@ -298,13 +349,11 @@ export default function CallingPage() {
             </TabsContent>
 
             <TabsContent value="contacts">
-              <Card className="p-6">
-                <p className="text-center text-gray-500">Contact list coming soon</p>
-              </Card>
+              <ContactsTable />
             </TabsContent>
 
             <TabsContent value="history">
-              <CallHistory />
+              <CallHistoryTable />
             </TabsContent>
           </Tabs>
 
@@ -319,17 +368,10 @@ export default function CallingPage() {
           )}
         </div>
 
-        {/* Middle Column - Live Transcript */}
-        <div className="lg:col-span-1">
-          <TranscriptDisplay
-            segments={transcriptSegments}
-            isRealTime={isCallActive}
-            showSentiment={true}
-          />
-        </div>
-
-        {/* Right Column - Analytics */}
-        <div className="lg:col-span-1">
+        {/* Right Column - Live Transcript & Analytics */}
+        <div className="col-span-12 lg:col-span-4 space-y-6">
+          <LiveTranscript />
+          
           <CallAnalytics
             analytics={callAnalytics}
             duration={callDuration}
