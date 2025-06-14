@@ -65,15 +65,15 @@ export function EventDialog({
   defaultDate,
 }: EventDialogProps) {
   const { toast } = useToast()
-  const { contacts, fetchContacts } = useContactsStore()
+  const { contacts, loadContacts } = useContactsStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Fetch contacts when dialog opens
   useEffect(() => {
     if (open && contacts.length === 0) {
-      fetchContacts()
+      loadContacts()
     }
-  }, [open, contacts.length, fetchContacts])
+  }, [open, contacts.length, loadContacts])
 
   const form = useForm<EventFormData>({
     resolver: zodResolver(EventFormSchema),

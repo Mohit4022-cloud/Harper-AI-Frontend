@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useCallQueueStore } from '@/stores/callQueueStore'
-import { formatPhoneNumber, isValidE164, Contact } from '@/lib/mockContacts'
+import { useContactsStore } from '@/stores/contactsStore'
+import { formatPhoneNumber, isValidE164 } from '@/lib/mockContacts'
 import { cn } from '@/lib/utils'
+import type { CreateContact } from '@/types/contact'
 
 interface CSVRow {
   Name?: string
@@ -24,8 +26,9 @@ export function CSVUploader() {
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [preview, setPreview] = useState<Contact[]>([])
+  const [preview, setPreview] = useState<CreateContact[]>([])
   const { setQueue, queue } = useCallQueueStore()
+  const { addContact } = useContactsStore()
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -41,7 +44,7 @@ export function CSVUploader() {
       skipEmptyLines: true,
       complete: (results) => {
         try {
-          const contacts: Contact[] = []
+          const contacts: CreateContact[] = []
           const errors: string[] = []
 
           results.data.forEach((row, index) => {
@@ -64,14 +67,22 @@ export function CSVUploader() {
               return
             }
 
+            // Validate email if provided
+            if (email && !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+              errors.push(`Row ${index + 2}: Invalid email format for ${name}`)
+              return
+            }
+
             contacts.push({
-              id: `csv-${Date.now()}-${index}`,
               name,
               phone: formattedPhone,
-              company: company || 'Unknown Company',
-              title: title || 'Unknown Title',
+              email: email || `${name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
+              company: company || '',
+              title: title || '',
               industry,
-              email,
+              status: 'prospect',
+              leadScore: 50,
+              notes: `Imported from CSV on ${new Date().toLocaleDateString()}`
             })
           })
 
@@ -100,14 +111,48 @@ export function CSVUploader() {
     })
   }
 
-  const loadContactsToQueue = () => {
-    const contacts = (window as any).__csvContacts as Contact[]
+  const loadContactsToQueue = async () => {
+    const contacts = (window as any).__csvContacts as CreateContact[]
     if (contacts && contacts.length > 0) {
-      setQueue(contacts)
-      setSuccess(`Loaded ${contacts.length} contacts to call queue`)
-      // Clear the temporary storage
-      delete (window as any).__csvContacts
-      setPreview([])
+      setIsUploading(true)
+      try {
+        // Add contacts to the unified store
+        const addedContacts = []
+        for (const contact of contacts) {
+          try {
+            await addContact(contact)
+            addedContacts.push(contact)
+          } catch (err) {
+            console.error(`Failed to add contact ${contact.name}:`, err)
+          }
+        }
+        
+        // Convert to queue format and add to call queue
+        const queueContacts = addedContacts.map((c, idx) => ({
+          id: `csv-${Date.now()}-${idx}`,
+          name: c.name,
+          company: c.company || '',
+          title: c.title || '',
+          phone: c.phone,
+          email: c.email,
+          industry: c.industry || '',
+          lastCalled: undefined,
+          callStatus: undefined as any,
+          callDuration: undefined,
+          notes: c.notes
+        }))
+        
+        setQueue(queueContacts)
+        setSuccess(`Added ${addedContacts.length} contacts and loaded to call queue`)
+        
+        // Clear the temporary storage
+        delete (window as any).__csvContacts
+        setPreview([])
+      } catch (err) {
+        setError(`Failed to load contacts: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      } finally {
+        setIsUploading(false)
+      }
     }
   }
 
@@ -205,10 +250,10 @@ export function CSVUploader() {
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={loadContactsToQueue} size="sm">
-                  Load to Call Queue
+                <Button onClick={loadContactsToQueue} size="sm" disabled={isUploading}>
+                  {isUploading ? 'Loading...' : 'Add to Contacts & Call Queue'}
                 </Button>
-                <Button onClick={clearUpload} variant="outline" size="sm">
+                <Button onClick={clearUpload} variant="outline" size="sm" disabled={isUploading}>
                   <X className="h-4 w-4 mr-1" />
                   Clear
                 </Button>

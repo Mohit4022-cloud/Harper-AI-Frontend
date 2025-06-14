@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { CreateContactSchema, CreateContact } from '@/types/contact'
+import { ContactSchema, Contact } from '@/types/contact'
 import { useContactsStore } from '@/stores/contactsStore'
 import { useToast } from '@/components/ui/use-toast'
 import {
@@ -32,48 +32,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Plus } from 'lucide-react'
+import { Loader2, Save } from 'lucide-react'
 
-interface AddContactFormProps {
+interface EditContactFormProps {
+  contact: Contact | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-export function AddContactForm({ open, onOpenChange }: AddContactFormProps) {
+export function EditContactForm({ contact, open, onOpenChange }: EditContactFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { addContact } = useContactsStore()
+  const { updateContact } = useContactsStore()
   const { toast } = useToast()
 
-  const form = useForm<CreateContact>({
-    resolver: zodResolver(CreateContactSchema),
-    defaultValues: {
-      name: '',
-      email: '',
-      phone: '',
-      company: '',
-      title: '',
-      industry: '',
-      leadScore: 50,
-      status: 'prospect',
-      tags: [],
-      notes: '',
-    },
+  const form = useForm<Contact>({
+    resolver: zodResolver(ContactSchema),
+    defaultValues: contact || {},
   })
 
-  const onSubmit = async (data: CreateContact) => {
+  useEffect(() => {
+    if (contact) {
+      form.reset(contact)
+    }
+  }, [contact, form])
+
+  const onSubmit = async (data: Contact) => {
+    if (!contact) return
+    
     setIsSubmitting(true)
     try {
-      await addContact(data)
+      await updateContact(data)
       toast({
-        title: 'Contact added',
-        description: `${data.name} has been added to your contacts.`,
+        title: 'Contact updated',
+        description: `${data.name} has been updated.`,
       })
-      form.reset()
       onOpenChange(false)
     } catch (error) {
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to add contact',
+        description: error instanceof Error ? error.message : 'Failed to update contact',
         variant: 'destructive',
       })
     } finally {
@@ -81,13 +78,15 @@ export function AddContactForm({ open, onOpenChange }: AddContactFormProps) {
     }
   }
 
+  if (!contact) return null
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Add New Contact</DialogTitle>
+          <DialogTitle>Edit Contact</DialogTitle>
           <DialogDescription>
-            Enter the contact details below.
+            Update the contact details below.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -142,7 +141,7 @@ export function AddContactForm({ open, onOpenChange }: AddContactFormProps) {
                   <FormItem>
                     <FormLabel>Company</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -158,7 +157,7 @@ export function AddContactForm({ open, onOpenChange }: AddContactFormProps) {
                   <FormItem>
                     <FormLabel>Title</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -170,7 +169,7 @@ export function AddContactForm({ open, onOpenChange }: AddContactFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue />
@@ -192,12 +191,33 @@ export function AddContactForm({ open, onOpenChange }: AddContactFormProps) {
 
             <FormField
               control={form.control}
+              name="leadScore"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Lead Score (0-100)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min="0" 
+                      max="100" 
+                      {...field} 
+                      value={field.value || 50}
+                      onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="notes"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
                   <FormControl>
-                    <Textarea {...field} />
+                    <Textarea {...field} value={field.value || ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -212,12 +232,12 @@ export function AddContactForm({ open, onOpenChange }: AddContactFormProps) {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Adding...
+                    Updating...
                   </>
                 ) : (
                   <>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Contact
+                    <Save className="mr-2 h-4 w-4" />
+                    Update Contact
                   </>
                 )}
               </Button>

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { 
   Phone, 
@@ -18,22 +18,29 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
-import { mockContacts, Contact } from '@/lib/mockContacts'
+import { useContactsStore } from '@/stores/contactsStore'
 import { useCallQueueStore } from '@/stores/callQueueStore'
 import { cn } from '@/lib/utils'
+import type { Contact } from '@/types/contact'
 
 export function ContactsTable() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedContacts, setSelectedContacts] = useState<string[]>([])
+  const { contacts, loading, loadContacts } = useContactsStore()
   const { addToQueue, queue } = useCallQueueStore()
 
+  // Load contacts on mount
+  useEffect(() => {
+    loadContacts()
+  }, [loadContacts])
+
   // Filter contacts based on search
-  const filteredContacts = mockContacts.filter((contact) => {
+  const filteredContacts = contacts.filter((contact) => {
     const search = searchTerm.toLowerCase()
     return (
       contact.name.toLowerCase().includes(search) ||
-      contact.company.toLowerCase().includes(search) ||
-      contact.title.toLowerCase().includes(search) ||
+      (contact.company?.toLowerCase().includes(search) || false) ||
+      (contact.title?.toLowerCase().includes(search) || false) ||
       contact.email.toLowerCase().includes(search) ||
       contact.phone.includes(search)
     )
@@ -56,8 +63,22 @@ export function ContactsTable() {
   }
 
   const addSelectedToQueue = () => {
-    const contactsToAdd = mockContacts.filter((c) => selectedContacts.includes(c.id))
-    addToQueue(contactsToAdd)
+    const contactsToAdd = contacts.filter((c) => selectedContacts.includes(c.id))
+    // Convert to call queue format
+    const queueContacts = contactsToAdd.map(c => ({
+      id: c.id,
+      name: c.name,
+      company: c.company || '',
+      title: c.title || '',
+      phone: c.phone,
+      email: c.email,
+      industry: c.industry || '',
+      lastCalled: c.lastContactedAt ? new Date(c.lastContactedAt) : undefined,
+      callStatus: undefined as any,
+      callDuration: undefined,
+      notes: c.notes
+    }))
+    addToQueue(queueContacts)
     setSelectedContacts([])
   }
 
@@ -65,15 +86,15 @@ export function ContactsTable() {
     return queue.some((c) => c.id === contactId)
   }
 
-  const getCallStatusIcon = (status?: Contact['callStatus']) => {
-    switch (status) {
-      case 'completed':
+  const getCallStatusIcon = (contact: Contact) => {
+    // Check if contact was recently contacted
+    if (contact.lastContactedAt) {
+      const daysSinceContact = Math.floor((Date.now() - new Date(contact.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24))
+      if (daysSinceContact < 7) {
         return <CheckCircle2 className="h-4 w-4 text-green-500" />
-      case 'failed':
-        return <XCircle className="h-4 w-4 text-red-500" />
-      default:
-        return null
+      }
     }
+    return null
   }
 
   return (
@@ -122,8 +143,13 @@ export function ContactsTable() {
       </CardHeader>
       
       <CardContent className="flex-1 p-0">
-        <ScrollArea className="h-[500px]">
-          <div className="w-full">
+        {loading && contacts.length === 0 ? (
+          <div className="flex items-center justify-center h-[500px] text-muted-foreground">
+            Loading contacts...
+          </div>
+        ) : (
+          <ScrollArea className="h-[500px]">
+            <div className="w-full">
             <table className="w-full">
               <thead className="sticky top-0 bg-background border-b">
                 <tr>
@@ -164,16 +190,18 @@ export function ContactsTable() {
                           <User className="h-4 w-4 text-muted-foreground" />
                           {contact.name}
                         </p>
-                        <p className="text-sm text-muted-foreground">
-                          {contact.title}
-                        </p>
+                        {contact.title && (
+                          <p className="text-sm text-muted-foreground">
+                            {contact.title}
+                          </p>
+                        )}
                       </div>
                     </td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         <Building2 className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <p className="text-sm">{contact.company}</p>
+                          <p className="text-sm">{contact.company || 'No company'}</p>
                           {contact.industry && (
                             <p className="text-xs text-muted-foreground">
                               {contact.industry}
@@ -195,16 +223,14 @@ export function ContactsTable() {
                       </div>
                     </td>
                     <td className="p-3">
-                      {contact.lastCalled ? (
+                      {contact.lastContactedAt ? (
                         <div>
                           <p className="text-sm">
-                            {format(contact.lastCalled, 'MMM d, yyyy')}
+                            {format(new Date(contact.lastContactedAt), 'MMM d, yyyy')}
                           </p>
-                          {contact.callDuration && (
-                            <p className="text-xs text-muted-foreground">
-                              {Math.floor(contact.callDuration / 60)}m {contact.callDuration % 60}s
-                            </p>
-                          )}
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(contact.lastContactedAt), 'h:mm a')}
+                          </p>
                         </div>
                       ) : (
                         <span className="text-sm text-muted-foreground">Never</span>
@@ -212,7 +238,7 @@ export function ContactsTable() {
                     </td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
-                        {getCallStatusIcon(contact.callStatus)}
+                        {getCallStatusIcon(contact)}
                         {isInQueue(contact.id) && (
                           <Badge variant="secondary" className="text-xs">
                             In Queue
@@ -226,6 +252,7 @@ export function ContactsTable() {
             </table>
           </div>
         </ScrollArea>
+        )}
       </CardContent>
     </Card>
   )

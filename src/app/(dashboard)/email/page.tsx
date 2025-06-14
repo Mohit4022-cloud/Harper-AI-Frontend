@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -13,8 +13,10 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/components/ui/use-toast'
 import { parseCSV, validateCSVStructure } from '@/lib/utils/csvParser'
-import { Mail, Upload, Download, Users, Sparkles, Send, FileText, AlertCircle } from 'lucide-react'
+import { Mail, Upload, Download, Users, Sparkles, Send, FileText, AlertCircle, Search } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
+import { useContactsStore } from '@/stores/contactsStore'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 interface EmailSettings {
   tone: 'Professional' | 'Consultative' | 'Direct' | 'Friendly' | 'Urgent'
@@ -42,12 +44,14 @@ export default function EmailPage() {
   const router = useRouter()
   const { user } = useAuthStore()
   const { toast } = useToast()
+  const { contacts, loading, loadContacts } = useContactsStore()
   const [activeTab, setActiveTab] = useState('upload')
   const [csvData, setCsvData] = useState<any[]>([])
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedEmails, setGeneratedEmails] = useState<GeneratedEmail[]>([])
   const [errors, setErrors] = useState<string[]>([])
+  const [contactSearch, setContactSearch] = useState('')
   
   const [settings, setSettings] = useState<EmailSettings>({
     tone: 'Professional',
@@ -59,6 +63,34 @@ export default function EmailPage() {
     includeFeatures: ['company-news', 'industry-insights'],
     customInstructions: ''
   })
+
+  // Load contacts on mount
+  useEffect(() => {
+    loadContacts()
+  }, [loadContacts])
+
+  // Filter contacts based on search
+  const filteredContacts = contacts.filter(contact => 
+    contact.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
+    contact.email.toLowerCase().includes(contactSearch.toLowerCase()) ||
+    (contact.company?.toLowerCase().includes(contactSearch.toLowerCase()) || false)
+  )
+
+  const toggleContactSelection = (contactId: string) => {
+    setSelectedContactIds(prev => 
+      prev.includes(contactId)
+        ? prev.filter(id => id !== contactId)
+        : [...prev, contactId]
+    )
+  }
+
+  const selectAllContacts = () => {
+    if (selectedContactIds.length === filteredContacts.length) {
+      setSelectedContactIds([])
+    } else {
+      setSelectedContactIds(filteredContacts.map(c => c.id))
+    }
+  }
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -106,6 +138,18 @@ export default function EmailPage() {
     setErrors([])
 
     try {
+      // Get selected contacts data if using existing contacts
+      const selectedContactsData = activeTab === 'contacts' 
+        ? contacts.filter(c => selectedContactIds.includes(c.id)).map(c => ({
+            name: c.name,
+            email: c.email,
+            company: c.company || '',
+            title: c.title || '',
+            industry: c.industry || '',
+            phone: c.phone
+          }))
+        : undefined
+
       const response = await fetch('/api/email/personalize', {
         method: 'POST',
         headers: {
@@ -114,6 +158,7 @@ export default function EmailPage() {
         },
         body: JSON.stringify({
           contactIds: activeTab === 'contacts' ? selectedContactIds : undefined,
+          contactsData: activeTab === 'contacts' ? selectedContactsData : undefined,
           csvData: activeTab === 'upload' ? csvData : undefined,
           settings,
           enableEnrichment: settings.includeFeatures.includes('company-news')
@@ -363,18 +408,79 @@ export default function EmailPage() {
                   )}
                 </TabsContent>
                 
-                <TabsContent value="contacts">
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Users className="mx-auto h-12 w-12 mb-4" />
-                    <p>Contact selection from database coming soon</p>
-                    <Button 
-                      variant="outline" 
-                      className="mt-4"
-                      onClick={() => router.push('/contacts')}
-                    >
-                      Manage Contacts
-                    </Button>
+                <TabsContent value="contacts" className="space-y-4">
+                  {/* Search Bar */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search contacts..."
+                      value={contactSearch}
+                      onChange={(e) => setContactSearch(e.target.value)}
+                      className="pl-9"
+                    />
                   </div>
+
+                  {/* Contact List */}
+                  {loading && contacts.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Loading contacts...
+                    </div>
+                  ) : filteredContacts.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Users className="mx-auto h-12 w-12 mb-4" />
+                      <p>No contacts found</p>
+                      <Button 
+                        variant="outline" 
+                        className="mt-4"
+                        onClick={() => router.push('/contacts')}
+                      >
+                        Add Contacts
+                      </Button>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium">
+                          {selectedContactIds.length} of {filteredContacts.length} selected
+                        </span>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={selectAllContacts}
+                        >
+                          {selectedContactIds.length === filteredContacts.length ? 'Deselect All' : 'Select All'}
+                        </Button>
+                      </div>
+                      
+                      <ScrollArea className="h-64 border rounded-lg">
+                        <div className="p-2 space-y-1">
+                          {filteredContacts.map((contact) => (
+                            <div 
+                              key={contact.id}
+                              className="flex items-center space-x-3 p-2 hover:bg-muted rounded cursor-pointer"
+                              onClick={() => toggleContactSelection(contact.id)}
+                            >
+                              <Checkbox 
+                                checked={selectedContactIds.includes(contact.id)}
+                                onCheckedChange={() => toggleContactSelection(contact.id)}
+                              />
+                              <div className="flex-1">
+                                <p className="font-medium text-sm">{contact.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {contact.email} • {contact.company || 'No company'}
+                                </p>
+                              </div>
+                              {contact.leadScore && (
+                                <Badge variant="outline" className="text-xs">
+                                  Score: {contact.leadScore}
+                                </Badge>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
 
