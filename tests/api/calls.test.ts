@@ -179,7 +179,7 @@ describe('Calls API Routes', () => {
   describe('GET /api/calls/[id]', () => {
     it('should return a specific call by ID', async () => {
       const request = createMockRequest('http://localhost:3000/api/calls/test-1');
-      const response = await getById(request, { params: { id: 'test-1' } });
+      const response = await getById(request, { params: Promise.resolve({ id: 'test-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -189,7 +189,7 @@ describe('Calls API Routes', () => {
 
     it('should return 404 for non-existent call', async () => {
       const request = createMockRequest('http://localhost:3000/api/calls/non-existent');
-      const response = await getById(request, { params: { id: 'non-existent' } });
+      const response = await getById(request, { params: Promise.resolve({ id: 'non-existent' }) });
       const data = await response.json();
 
       expect(response.status).toBe(404);
@@ -209,7 +209,7 @@ describe('Calls API Routes', () => {
         body: updates
       });
       
-      const response = await updateById(request, { params: { id: 'test-1' } });
+      const response = await updateById(request, { params: Promise.resolve({ id: 'test-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -227,7 +227,7 @@ describe('Calls API Routes', () => {
         body: { summary: 'Updated' }
       });
       
-      const response = await updateById(request, { params: { id: 'non-existent' } });
+      const response = await updateById(request, { params: Promise.resolve({ id: 'non-existent' }) });
       const data = await response.json();
 
       expect(response.status).toBe(404);
@@ -244,7 +244,7 @@ describe('Calls API Routes', () => {
         body: invalidUpdate
       });
       
-      const response = await updateById(request, { params: { id: 'test-1' } });
+      const response = await updateById(request, { params: Promise.resolve({ id: 'test-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -262,7 +262,7 @@ describe('Calls API Routes', () => {
         body: updateWithUnknownField
       });
       
-      const response = await updateById(request, { params: { id: 'test-1' } });
+      const response = await updateById(request, { params: Promise.resolve({ id: 'test-1' }) });
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -276,7 +276,7 @@ describe('Calls API Routes', () => {
         method: 'DELETE'
       });
       
-      const response = await deleteById(request, { params: { id: 'test-1' } });
+      const response = await deleteById(request, { params: Promise.resolve({ id: 'test-1' }) });
 
       expect(response.status).toBe(204);
       expect(await response.text()).toBe('');
@@ -292,7 +292,7 @@ describe('Calls API Routes', () => {
         method: 'DELETE'
       });
       
-      const response = await deleteById(request, { params: { id: 'non-existent' } });
+      const response = await deleteById(request, { params: Promise.resolve({ id: 'non-existent' }) });
       const data = await response.json();
 
       expect(response.status).toBe(404);
