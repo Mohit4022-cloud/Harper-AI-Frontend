@@ -4,7 +4,22 @@
 
 The error `accountSid must start with AC` indicates that the Twilio credentials are not properly configured.
 
-## 🔧 Local Development Setup
+## 🔧 Configuration Methods
+
+### Method 1: UI Settings (Recommended for Testing)
+
+1. Start the development server: `npm run dev`
+2. Go to http://localhost:3000/settings
+3. Click on the **Integrations** tab
+4. Fill in your credentials:
+   - **Twilio** tab: Account SID, Auth Token, Phone Number
+   - **ElevenLabs** tab: API Key, Voice ID, Agent ID
+5. Click **Save All Settings**
+6. Your credentials are now stored in localStorage and will be used automatically
+
+**Note**: UI settings are stored in your browser's localStorage. They persist across page refreshes but are specific to your browser.
+
+### Method 2: Environment Variables (.env.local)
 
 ### 1. Update `.env.local`
 
@@ -106,10 +121,15 @@ productiv-ai-relay/index.js (uses env vars)
 - Run `node scripts/test-twilio-config.js` to verify
 - Check Render logs for detailed error messages
 
-### Settings UI Not Working?
-- The Settings UI stores credentials in browser localStorage
-- For production, use Render environment variables instead
-- Environment variables take precedence over UI settings
+### How Settings Priority Works
+
+1. **UI Settings** (if provided) - Passed from browser localStorage
+2. **Environment Variables** - Used as fallback or for production
+
+The system checks both sources and uses whichever is available:
+- If you saved credentials in the UI, they'll be used
+- If not, it falls back to environment variables
+- For Render deployment, always use environment variables
 
 ## ✅ Success Indicators
 

@@ -35,20 +35,10 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Get settings from in-memory store (since we're already on the server)
-    // This avoids the circular API call issue
-    const settingsModule = await import('@/app/api/settings/route')
-    const settingsResponse = await settingsModule.GET(req)
-    
-    if (!settingsResponse.ok) {
-      return NextResponse.json(
-        { error: 'Failed to fetch settings' },
-        { status: 500 }
-      )
-    }
-    
-    const settingsData = await settingsResponse.json()
-    const settings = settingsData.data?.integrations
+    // Get settings from request body if provided (from UI)
+    // This allows the UI to pass stored settings directly
+    const { settings: clientSettings } = body
+    const settings = clientSettings?.integrations || global.userSettings?.integrations
     
     const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID
     const authToken = settings?.twilioAuthToken || process.env.TWILIO_AUTH_TOKEN

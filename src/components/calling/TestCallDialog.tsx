@@ -19,6 +19,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { api } from '@/lib/api-client'
+import { useSettingsStore } from '@/stores/settingsStore'
 
 interface CallResponse {
   success: boolean
@@ -39,6 +40,7 @@ export function TestCallDialog() {
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([])
   const [currentCallSid, setCurrentCallSid] = useState<string | null>(null)
   const [isPollingTranscript, setIsPollingTranscript] = useState(false)
+  const { settings } = useSettingsStore()
   const [phoneNumber, setPhoneNumber] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'success' | 'error'>('idle')
@@ -79,7 +81,11 @@ export function TestCallDialog() {
     setCallDetails(null)
 
     try {
-      const data = await api.post<CallResponse>('/api/call/start', { phone: e164Phone })
+      // Pass settings from UI store to ensure they're used
+      const data = await api.post<CallResponse>('/api/call/start', { 
+        phone: e164Phone,
+        settings: settings // Include UI settings
+      })
 
       if (data.success) {
         setCallStatus('success')
