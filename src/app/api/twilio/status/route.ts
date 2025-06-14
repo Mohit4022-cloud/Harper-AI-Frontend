@@ -62,6 +62,6 @@ export async function GET(request: NextRequest) {
     message: 'Twilio Status Callback is ready',
     endpoint: '/api/twilio/status',
     method: 'POST',
-    statuses: Object.values(TWILIO_CALL_STATUS),
+    statuses: ['initiated', 'ringing', 'answered', 'completed', 'busy', 'no-answer', 'failed', 'canceled'],
   });
 }

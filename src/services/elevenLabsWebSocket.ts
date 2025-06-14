@@ -93,7 +93,7 @@ export async function connectToElevenLabs(
   // Helper to flush buffered audio
   const flushBuffer = () => {
     if (!elevenReady || !elevenWs || elevenWs.readyState !== WebSocket.OPEN) return
-    buffer.forEach(b => elevenWs.send(JSON.stringify({ user_audio_chunk: b })))
+    buffer.forEach(b => elevenWs!.send(JSON.stringify({ user_audio_chunk: b })))
     buffer.length = 0
   }
   
@@ -121,11 +121,11 @@ export async function connectToElevenLabs(
               context: context.context
             }
           }
-          elevenWs.send(JSON.stringify(init))
+          elevenWs!.send(JSON.stringify(init))
         }
       })
       
-      elevenWs.on('message', (data) => {
+      elevenWs.on('message', (data: any) => {
         let msg: any
         try { 
           msg = JSON.parse(data.toString()) 
@@ -171,7 +171,7 @@ export async function connectToElevenLabs(
             
           case 'ping':
             if (msg.ping_event?.event_id) {
-              elevenWs.send(JSON.stringify({
+              elevenWs!.send(JSON.stringify({
                 type: 'pong',
                 event_id: msg.ping_event.event_id
               }))
@@ -209,7 +209,7 @@ export async function connectToElevenLabs(
         }
       })
       
-      elevenWs.on('error', (error) => {
+      elevenWs.on('error', (error: any) => {
         logger.error({ 
           requestId,
           callSid: context.callSid,
@@ -227,7 +227,7 @@ export async function connectToElevenLabs(
   }
   
   // Handle Twilio WebSocket messages
-  twilioWs.on('message', (raw) => {
+  twilioWs.on('message', (raw: any) => {
     let data: any
     try { 
       data = JSON.parse(raw.toString()) 
