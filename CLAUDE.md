@@ -92,11 +92,13 @@ demo@harperai.com / password123
 ```
 
 ### 🚀 Development Bypass (Skip Login)
-**Quick Access**: http://localhost:3000/dev-login
+**Local Development**: http://localhost:3000/dev-login
+**Render Production**: https://harper-ai-frontend.onrender.com/dev-login?render_bypass=true
+
 - One-click login as any test user
-- Available only in development mode
-- Automatically disabled in production
-- Also accessible from login page "Skip Login (Dev Bypass)" link
+- Works in development mode automatically
+- Requires special parameter (?render_bypass=true) in production
+- Also accessible from login page "Skip Login (Dev Bypass)" link in dev mode
 
 ### Manual Testing Checklist
 - [ ] Login works without network errors
