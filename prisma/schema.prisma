@@ -36,6 +36,7 @@ model User {
   emails           Email[]
   deals            Deal[]
   tasks            Task[]
+  personalizationJobs PersonalizationJob[]
   
   @@index([organizationId])
   @@index([teamId])
@@ -68,6 +69,7 @@ model Organization {
   customFields    CustomField[]
   emailTemplates  EmailTemplate[]
   segments        Segment[]
+  personalizationJobs PersonalizationJob[]
 }
 
 model Team {
@@ -138,6 +140,8 @@ model Contact {
   notes           Note[]
   leadScoreHistory LeadScoreHistory[]
   segmentContacts SegmentContact[]
+  personalizedEmails PersonalizedEmail[]
+  enrichments     ContactEnrichment[]
   
   @@unique([email, organizationId])
   @@index([organizationId])
@@ -281,6 +285,14 @@ model Email {
   campaignId      String?
   sequenceStep    Int?
   
+  // Template reference
+  templateId      String?
+  template        EmailTemplate?   @relation(fields: [templateId], references: [id])
+  
+  // Personalization
+  personalizationJobId String?
+  personalizationJob   PersonalizationJob? @relation(fields: [personalizationJobId], references: [id])
+  
   // Tracking
   status          EmailStatus      @default(DRAFT)
   sentAt          DateTime?
@@ -303,6 +315,8 @@ model Email {
   @@index([campaignId])
   @@index([status])
   @@index([sentAt])
+  @@index([templateId])
+  @@index([personalizationJobId])
 }
 
 enum EmailStatus {
@@ -566,6 +580,11 @@ model EmailTemplate {
   tags            String[]         @default([])
   variables       String[]         @default([]) // e.g., ["first_name", "company"]
   
+  // AI Configuration
+  tone            String?          // professional, casual, friendly, etc.
+  length          String?          // short, medium, long
+  personalizationRules Json?       // Custom rules for AI personalization
+  
   // Performance metrics
   useCount        Int              @default(0)
   avgOpenRate     Float            @default(0)
@@ -575,6 +594,10 @@ model EmailTemplate {
   // Timestamps
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  
+  // Relations
+  emails          Email[]
+  personalizationJobs PersonalizationJob[]
   
   @@index([organizationId])
   @@index([category])
@@ -674,4 +697,145 @@ enum SubscriptionPlan {
   STARTER
   PROFESSIONAL
   ENTERPRISE
+}
+
+// Email Personalization Job
+model PersonalizationJob {
+  id              String                   @id @default(cuid())
+  name            String
+  status          PersonalizationStatus    @default(PENDING)
+  
+  // User who created the job
+  userId          String
+  user            User                     @relation(fields: [userId], references: [id])
+  organizationId  String
+  organization    Organization             @relation(fields: [organizationId], references: [id])
+  
+  // Template configuration
+  templateId      String
+  template        EmailTemplate            @relation(fields: [templateId], references: [id])
+  
+  // AI Configuration
+  aiModel         String                   @default("gemini-pro")
+  tone            String?
+  length          String?
+  customPrompt    String?
+  
+  // Progress tracking
+  totalContacts   Int                      @default(0)
+  processedContacts Int                    @default(0)
+  successCount    Int                      @default(0)
+  failureCount    Int                      @default(0)
+  
+  // Timestamps
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  
+  // Relations
+  personalizedEmails PersonalizedEmail[]
+  emails          Email[]
+  
+  @@index([userId])
+  @@index([organizationId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum PersonalizationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// Personalized Email Results
+model PersonalizedEmail {
+  id              String                   @id @default(cuid())
+  jobId           String
+  job             PersonalizationJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  // Contact reference
+  contactId       String
+  contact         Contact                  @relation(fields: [contactId], references: [id])
+  
+  // Generated content
+  subject         String
+  body            String
+  html            String?
+  
+  // Enrichment data used
+  enrichmentData  Json?
+  enrichmentSources String[]               @default([])
+  
+  // AI generation metadata
+  generationTime  Int                      // milliseconds
+  tokenCount      Int?
+  confidence      Float?                   // AI confidence score
+  
+  // Review status
+  status          EmailReviewStatus        @default(PENDING)
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  reviewNotes     String?
+  
+  // Timestamps
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  
+  @@index([jobId])
+  @@index([contactId])
+  @@index([status])
+}
+
+enum EmailReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EDITED
+  SENT
+}
+
+// Contact Enrichment Data
+model ContactEnrichment {
+  id              String                   @id @default(cuid())
+  contactId       String
+  contact         Contact                  @relation(fields: [contactId], references: [id])
+  
+  // Enrichment sources
+  source          EnrichmentSource
+  sourceId        String?                  // External ID from the source
+  
+  // Enriched data
+  data            Json
+  confidence      Float?                   // Data confidence score
+  
+  // Status
+  status          EnrichmentStatus         @default(SUCCESS)
+  error           String?
+  
+  // Timestamps
+  createdAt       DateTime                 @default(now())
+  expiresAt       DateTime?                // When the data becomes stale
+  
+  @@unique([contactId, source])
+  @@index([contactId])
+  @@index([source])
+  @@index([createdAt])
+}
+
+enum EnrichmentSource {
+  APOLLO
+  NEWSAPI
+  LINKEDIN
+  CLEARBIT
+  MANUAL
+}
+
+enum EnrichmentStatus {
+  SUCCESS
+  FAILED
+  EXPIRED
 }
