@@ -339,6 +339,35 @@ harper-ai/
 - Performance optimization and caching
 - WebSocket scaling for real-time features
 
+## 🔬 **Test & QA Coverage Goals**
+
+- [ ] Set up **test environment** with MSW for API mocking
+- [ ] Add **unit tests** for all services (🎯 80%+ coverage)
+- [ ] Implement **visual regression tests** with Playwright
+- [ ] Add **accessibility tests** using `axe-core`
+
+## 🏗️ **Architectural Recommendations**
+
+### **1. API Layer Refactor**
+- [ ] Migrate to **tRPC** for full-stack type safety
+- [ ] Implement global **error boundaries**
+- [ ] Generate **OpenAPI documentation** from types
+
+### **2. State Management**
+- [ ] Evaluate **Jotai** for atomic state slices
+- [ ] Normalize all fetched data
+- [ ] Add **optimistic UI updates** to improve UX
+
+### **3. Component Architecture**
+- [ ] Build **compound components** for complex interactions
+- [ ] Implement full **loading / error / empty** UI states
+- [ ] Add **Storybook** for isolated component documentation
+
+### **4. Monitoring & Observability**
+- [ ] Add **Sentry** for runtime error tracking
+- [ ] Implement **performance monitoring** (e.g. Web Vitals)
+- [ ] Use structured, timestamped **logging**
+
 ---
 
 **🚀 Built with modern web technologies, AI integration, and Claude Code best practices**
