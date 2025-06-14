@@ -3,7 +3,7 @@ services:
     name: harper-ai-frontend
     env: node
     plan: free
-    buildCommand: npm ci && npx prisma generate && npm run build
+    buildCommand: git submodule update --init --recursive && npm ci && npx prisma generate && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
