@@ -119,12 +119,29 @@ export async function POST(req: NextRequest) {
         await initializeRelay(relayConfig)
       }
 
-      // Start the call using direct relay function
+      // Add default script and persona if not provided
+      const defaultScript = "You are a helpful AI assistant for Harper AI. Be friendly and professional.";
+      const defaultPersona = "Professional, friendly, and helpful sales assistant";
+      
+      // Start the call using direct relay function with context
       const result = await startAutoDial({
         to: phone,
         from: twilioNumber,
-        requestId
+        requestId,
+        script: defaultScript,
+        persona: defaultPersona,
+        context: "This is a test call from Harper AI to verify the voice pipeline is working."
       })
+      
+      logger.info({ 
+        requestId,
+        callSid: result.callSid,
+        reqId: result.reqId,
+        hasScript: true,
+        hasPersona: true,
+        script: defaultScript.substring(0, 50) + '...',
+        persona: defaultPersona
+      }, 'call.start.context_added')
       
       if (!result.success) {
         logger.error({ 

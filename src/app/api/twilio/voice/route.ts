@@ -67,21 +67,65 @@ export async function POST(request: NextRequest) {
  * Generate TwiML for streaming to ElevenLabs
  */
 function generateStreamingTwiML(request: NextRequest, reqId: string): string {
-  // Determine protocol based on host
   const host = request.headers.get('host') || 'localhost';
   const isLocal = /localhost|127\.0\.0\.1/.test(host);
-  const proto = isLocal ? 'ws' : 'wss';
   
-  // WebSocket URL for media streaming
-  const streamUrl = `${proto}://${host}/api/media-stream?reqId=${reqId}`;
+  // Log the call context and ElevenLabs configuration
+  const context = getCallContext(reqId);
+  logger.info({
+    reqId,
+    callSid: context.callSid,
+    script: context.script || 'NO_SCRIPT',
+    persona: context.persona || 'NO_PERSONA',
+    context: context.context || 'NO_CONTEXT',
+    elevenLabsAgentId: process.env.ELEVENLABS_AGENT_ID || 'NOT_SET',
+    elevenLabsApiKey: process.env.ELEVENLABS_API_KEY ? 'SET' : 'NOT_SET',
+  }, 'twilio.voice.twiml.generating');
 
-  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+  // Check if we should use the relay subprocess (local development)
+  const useRelay = process.env.USE_RELAY_SUBPROCESS === 'true';
+  
+  if (useRelay && isLocal) {
+    // Use the original relay subprocess approach for local development
+    const relayPort = process.env.RELAY_PORT || '8000';
+    const streamUrl = `ws://localhost:${relayPort}/media-stream?reqId=${reqId}`;
+    
+    logger.info({
+      reqId,
+      streamUrl,
+      useRelay: true
+    }, 'twilio.voice.using_relay_subprocess');
+    
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say>Connecting you to the AI assistant.</Say>
   <Connect>
     <Stream url="${streamUrl}" />
   </Connect>
 </Response>`;
+    
+    return twiml;
+  }
+  
+  // For production/Render, use a simpler approach
+  const baseUrl = isLocal ? `http://${host}` : `https://${host}`;
+  const testAudioUrl = `${baseUrl}/api/elevenlabs/test-audio?reqId=${reqId}`;
+  
+  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say>Connecting you to the AI assistant.</Say>
+  <Play>${testAudioUrl}</Play>
+  <Say>Real-time conversation requires WebSocket streaming. This is a test of the audio pipeline.</Say>
+  <Pause length="2"/>
+  <Say>Thank you for calling. Goodbye.</Say>
+  <Hangup/>
+</Response>`;
+
+  logger.info({
+    reqId,
+    twiml: twiml.replace(/\n/g, ' ').substring(0, 200) + '...',
+    useRelay: false
+  }, 'twilio.voice.twiml.generated');
 
   return twiml;
 }
