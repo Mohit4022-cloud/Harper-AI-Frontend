@@ -7,16 +7,16 @@ import axios from 'axios'
  * - Development: Uses window.location.origin or localhost fallback
  */
 export const getApiBaseUrl = (): string => {
-  // Use env variable if available (production)
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    console.log('🔗 Using NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL)
-    return process.env.NEXT_PUBLIC_API_URL
-  }
-
-  // Client-side fallback (use current domain)
+  // Client-side: Always use current domain to avoid CORS issues
   if (typeof window !== 'undefined') {
     console.log('🔗 Using window.location.origin:', window.location.origin)
     return window.location.origin
+  }
+
+  // Server-side: Use env variable if available (production)
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    console.log('🔗 Using NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL)
+    return process.env.NEXT_PUBLIC_API_URL
   }
 
   // Default server-side fallback
