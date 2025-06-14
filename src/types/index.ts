@@ -11,6 +11,7 @@ export interface User {
   lastLoginAt?: Date
   createdAt: Date
   updatedAt: Date
+  phone?: string
 }
 
 export type UserRole = 'org_admin' | 'sales_manager' | 'team_lead' | 'sdr' | 'account_executive'

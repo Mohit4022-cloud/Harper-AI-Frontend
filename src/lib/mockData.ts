@@ -1,7 +1,7 @@
-import { User, Contact, Call, Email, DashboardMetrics } from '@/types'
+import { User, UserRole, Contact, Call, Email, DashboardMetrics } from '@/types'
 
-// Mock Users Database
-export const mockUsers: User[] = [
+// Mock Users Database (mutable for demo purposes)
+export let mockUsers: User[] = [
   {
     id: '1',
     email: 'admin@harperai.com',
@@ -124,12 +124,46 @@ export function findUserByEmail(email: string): User | undefined {
   return mockUsers.find(user => user.email === email)
 }
 
+// Helper function to find user by ID
+export function findUserById(id: string): User | undefined {
+  return mockUsers.find(user => user.id === id)
+}
+
 // Helper function to validate password (mock - always returns true for demo)
 export function validatePassword(email: string, password: string): boolean {
   // In a real app, you'd hash and compare passwords
   // For demo purposes, any password works
   const user = findUserByEmail(email)
   return !!user && password.length >= 6
+}
+
+// Helper function to create a new user (for registration)
+export function createUser(userData: {
+  email: string;
+  name: string;
+  role: UserRole;
+  organizationId: string;
+  phone?: string;
+}): User {
+  const newUser: User = {
+    id: `user-${Date.now()}`, // Simple ID generation for demo
+    email: userData.email,
+    name: userData.name,
+    avatar: '',
+    role: userData.role,
+    organizationId: userData.organizationId,
+    teamId: 'team1', // Default team for demo
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    lastLoginAt: new Date(),
+    phone: userData.phone,
+  }
+  
+  // Add to mock database
+  mockUsers.push(newUser)
+  
+  return newUser
 }
 
 // Generate mock call data
