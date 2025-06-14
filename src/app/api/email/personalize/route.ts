@@ -270,6 +270,7 @@ export async function POST(request: NextRequest) {
               body: emailContent.body,
               status: 'DRAFT',
               userId: payload.userId,
+              fromEmail: 'ai@harperai.com',
               recipients: {
                 create: {
                   contactId: contact.id,

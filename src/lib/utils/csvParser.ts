@@ -73,7 +73,7 @@ export async function parseCSV(
     const columns = Object.keys(records[0]);
     
     // Default mapping if not provided
-    const fieldMapping: CSVMapping = mapping || {
+    const fieldMapping: CSVMapping = mapping as CSVMapping || {
       email: findColumn(columns, ['email', 'email_address', 'e-mail']),
       firstName: findColumn(columns, ['first_name', 'firstname', 'fname']),
       lastName: findColumn(columns, ['last_name', 'lastname', 'lname']),
