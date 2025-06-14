@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { callRelayService } from '@/services/callRelayService'
+import { logger } from '@/lib/logger'
+import { streamTranscript, isInitialized } from '@/services/callRelayDirect'
 
 export async function GET(req: NextRequest) {
+  const requestId = req.headers.get('x-request-id') || Math.random().toString(36).substr(2, 9)
+  
   try {
     const searchParams = req.nextUrl.searchParams
     const callSid = searchParams.get('callSid')
@@ -13,28 +16,41 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    // Check if relay service is running
-    const isHealthy = await callRelayService.health()
-    if (!isHealthy) {
+    logger.info({ requestId, callSid }, 'transcript.get.request')
+
+    // Check if relay is initialized
+    if (!isInitialized()) {
+      logger.warn({ requestId }, 'transcript.get.relay_not_initialized')
       return NextResponse.json(
-        { error: 'Call relay service is not running' },
+        { error: 'Call relay service is not initialized' },
         { status: 503 }
       )
     }
 
-    // Get transcript from relay
-    const transcriptData = await callRelayService.streamTranscript(callSid)
+    // Get transcript using direct relay function
+    const transcriptData = await streamTranscript(callSid)
+    
+    logger.info({ 
+      requestId, 
+      callSid,
+      transcriptCount: transcriptData.transcript.length 
+    }, 'transcript.get.success')
     
     return NextResponse.json({
       success: true,
       ...transcriptData,
     })
-  } catch (error) {
-    console.error('Error fetching transcript:', error)
+  } catch (error: any) {
+    logger.error({ 
+      requestId, 
+      error: error.message,
+      stack: error.stack 
+    }, 'transcript.get.error')
+    
     return NextResponse.json(
       { 
         error: 'Failed to fetch transcript', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
+        details: error.message 
       },
       { status: 500 }
     )

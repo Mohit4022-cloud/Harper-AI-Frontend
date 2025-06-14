@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { callRelayService } from '@/services/callRelayService'
 import { logger } from '@/lib/logger'
-import { RelayStartupError, createRelayErrorResponse } from '@/lib/relayBootstrap'
+import { 
+  initializeRelay, 
+  startAutoDial, 
+  isInitialized,
+  type RelayConfig 
+} from '@/services/callRelayDirect'
 
 /**
  * POST /api/call/start
- * Initiates an outbound call using Twilio + ElevenLabs relay
- * @param req - Request with { phone: string } in body
+ * Initiates an outbound call using direct relay functions
+ * @param req - Request with { phone: string, settings?: any } in body
  * @returns { success: boolean, callSid?: string, error?: string }
  */
 export async function POST(req: NextRequest) {
@@ -14,10 +18,11 @@ export async function POST(req: NextRequest) {
   
   try {
     const body = await req.json()
-    const { phone } = body
+    const { phone, settings: clientSettings } = body
     
     logger.info({ requestId, phone }, 'call.start.request')
 
+    // Validate phone number
     if (!phone) {
       logger.warn({ requestId }, 'call.start.missing_phone')
       return NextResponse.json(
@@ -29,15 +34,14 @@ export async function POST(req: NextRequest) {
     // Validate phone format
     const phoneRegex = /^\+?[1-9]\d{1,14}$/
     if (!phoneRegex.test(phone)) {
+      logger.warn({ requestId, phone }, 'call.start.invalid_phone')
       return NextResponse.json(
-        { error: 'Invalid phone number format' },
+        { success: false, error: 'Invalid phone number format. Use E.164 format (+1234567890)' },
         { status: 400 }
       )
     }
 
-    // Get settings from request body if provided (from UI)
-    // This allows the UI to pass stored settings directly
-    const { settings: clientSettings } = body
+    // Get settings from client or environment
     const settings = clientSettings?.integrations || global.userSettings?.integrations
     
     const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID
@@ -45,6 +49,7 @@ export async function POST(req: NextRequest) {
     const twilioNumber = settings?.twilioCallerNumber || process.env.TWILIO_CALLER_NUMBER
     const elevenLabsKey = settings?.elevenLabsKey || process.env.ELEVENLABS_API_KEY
     const elevenLabsAgentId = settings?.elevenLabsAgentId || process.env.ELEVENLABS_AGENT_ID
+    const baseUrl = settings?.baseUrl || process.env.BASE_URL || process.env.NEXT_PUBLIC_API_URL
     
     // Debug log configuration sources
     logger.info({
@@ -70,6 +75,9 @@ export async function POST(req: NextRequest) {
           fromEnv: !!process.env.ELEVENLABS_AGENT_ID,
           value: elevenLabsAgentId || 'NOT SET',
         },
+        baseUrl: {
+          value: baseUrl || 'NOT SET'
+        }
       },
     }, 'call.start.config_debug')
 
@@ -80,6 +88,7 @@ export async function POST(req: NextRequest) {
     if (!twilioNumber) missingConfig.push('Twilio Phone Number')
     if (!elevenLabsKey) missingConfig.push('ElevenLabs API Key')
     if (!elevenLabsAgentId) missingConfig.push('ElevenLabs Agent ID')
+    if (!baseUrl) missingConfig.push('Base URL for webhooks')
     
     if (missingConfig.length > 0) {
       logger.error({ requestId, missingConfig }, 'call.start.missing_config')
@@ -94,41 +103,74 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      // Ensure relay service is running
-      const isHealthy = await callRelayService.health()
-      if (!isHealthy) {
-        logger.info({ requestId }, 'call.start.relay_starting')
-        try {
-          // Start the relay service with retry logic
-          await callRelayService.start({
-            elevenLabsAgentId,
-            elevenLabsApiKey: elevenLabsKey,
-            twilioAccountSid: accountSid,
-            twilioAuthToken: authToken,
-            twilioPhoneNumber: twilioNumber,
-          })
-        } catch (relayError: any) {
-          logger.error({ requestId, error: relayError }, 'call.start.relay_startup_failed')
-          
-          // Return structured error response
-          const errorResponse = createRelayErrorResponse(relayError)
+      // Initialize relay if not already initialized
+      if (!isInitialized()) {
+        logger.info({ requestId }, 'call.start.relay_initializing')
+        
+        const relayConfig: RelayConfig = {
+          elevenLabsAgentId,
+          elevenLabsApiKey: elevenLabsKey,
+          twilioAccountSid: accountSid,
+          twilioAuthToken: authToken,
+          twilioPhoneNumber: twilioNumber,
+          baseUrl
+        }
+        
+        await initializeRelay(relayConfig)
+      }
+
+      // Start the call using direct relay function
+      const result = await startAutoDial({
+        to: phone,
+        from: twilioNumber,
+        requestId
+      })
+      
+      if (!result.success) {
+        logger.error({ 
+          requestId, 
+          error: result.error,
+          details: result.details 
+        }, 'call.start.relay_error')
+        
+        // Parse specific Twilio errors
+        if (result.details?.includes('authenticate')) {
           return NextResponse.json(
             { 
               success: false, 
-              ...errorResponse
+              error: 'Authentication failed',
+              details: 'Invalid Twilio credentials. Please check your Account SID and Auth Token.' 
             },
-            { status: 502 }
+            { status: 401 }
           )
         }
+        
+        if (result.details?.includes('21211') || result.details?.includes('phone number')) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: 'Invalid phone number',
+              details: 'The phone number format is invalid or the number does not exist.' 
+            },
+            { status: 400 }
+          )
+        }
+        
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: result.error || 'Failed to initiate call',
+            details: result.details 
+          },
+          { status: 502 }
+        )
       }
-
-      // Start the call through relay
-      const result = await callRelayService.startAutoDial({
-        to: phone,
-        from: twilioNumber,
-      })
       
-      logger.info({ requestId, callSid: result.callSid }, 'call.start.success')
+      logger.info({ 
+        requestId, 
+        callSid: result.callSid,
+        reqId: result.reqId 
+      }, 'call.start.success')
       
       return NextResponse.json({
         success: true,
@@ -138,45 +180,28 @@ export async function POST(req: NextRequest) {
         from: twilioNumber,
         to: phone,
       })
-    } catch (twilioError: any) {
-      logger.error({ requestId, error: twilioError }, 'call.start.twilio_error')
+    } catch (relayError: any) {
+      logger.error({ 
+        requestId, 
+        error: relayError.message,
+        stack: relayError.stack 
+      }, 'call.start.relay_error')
       
-      // Parse Twilio-specific errors
-      if (twilioError.code === 20003) {
-        return NextResponse.json(
-          { 
-            success: false, 
-            error: 'Authentication failed',
-            details: 'Invalid Twilio credentials. Please check your Account SID and Auth Token.' 
-          },
-          { status: 401 }
-        )
-      }
-      
-      if (twilioError.code === 21211) {
-        return NextResponse.json(
-          { 
-            success: false, 
-            error: 'Invalid phone number',
-            details: 'The phone number format is invalid. Please use E.164 format (+1234567890).' 
-          },
-          { status: 400 }
-        )
-      }
-      
-      // Generic Twilio error
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Failed to initiate call',
-          details: twilioError.message || 'An error occurred with the calling service' 
+          error: 'Service temporarily unavailable',
+          details: process.env.NODE_ENV === 'development' ? relayError.message : 'Please try again later'
         },
         { status: 502 }
       )
     }
-
   } catch (error: any) {
-    logger.error({ requestId, error }, 'call.start.error')
+    logger.error({ 
+      requestId, 
+      error: error.message,
+      stack: error.stack 
+    }, 'call.start.error')
     
     // Don't expose internal errors to client
     return NextResponse.json(

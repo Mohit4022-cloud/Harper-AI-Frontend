@@ -2,26 +2,29 @@
  * Twilio Status Callback Handler
  * 
  * Handles call status updates from Twilio
- * Updates call records with status changes
+ * Uses direct relay functions to update call state
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { updateCall } from '@/lib/callService';
-import { TWILIO_CALL_STATUS, type TwilioCallStatus } from '@/config/twilio';
+import { logger } from '@/lib/logger';
+import { handleCallStatus } from '@/services/callRelayDirect';
 
 export async function POST(request: NextRequest) {
+  const requestId = request.headers.get('x-request-id') || Math.random().toString(36).substr(2, 9);
+  
   try {
     // Get form data from Twilio webhook
     const formData = await request.formData();
     const callSid = formData.get('CallSid') as string;
-    const callStatus = formData.get('CallStatus') as TwilioCallStatus;
+    const callStatus = formData.get('CallStatus') as string;
     const duration = formData.get('CallDuration') as string;
     const from = formData.get('From') as string;
     const to = formData.get('To') as string;
     const direction = formData.get('Direction') as string;
     const timestamp = formData.get('Timestamp') as string;
 
-    console.log('[Twilio Status Callback] Call status update:', {
+    logger.info({
+      requestId,
       callSid,
       callStatus,
       duration,
@@ -29,40 +32,24 @@ export async function POST(request: NextRequest) {
       to,
       direction,
       timestamp,
-    });
+    }, 'twilio.status.update');
 
-    // Map Twilio status to our internal status
-    let internalStatus: 'completed' | 'failed' | 'no-answer' | 'busy' = 'completed';
-    
-    switch (callStatus) {
-      case TWILIO_CALL_STATUS.COMPLETED:
-        internalStatus = 'completed';
-        break;
-      case TWILIO_CALL_STATUS.FAILED:
-      case TWILIO_CALL_STATUS.CANCELED:
-        internalStatus = 'failed';
-        break;
-      case TWILIO_CALL_STATUS.NO_ANSWER:
-        internalStatus = 'no-answer';
-        break;
-      case TWILIO_CALL_STATUS.BUSY:
-        internalStatus = 'busy';
-        break;
-    }
-
-    // Update call record in our database
-    // In a real app, you would look up the call by Twilio SID
-    // For now, we'll just log the update
-    console.log('[Twilio Status Callback] Would update call:', {
-      twilioSid: callSid,
-      status: internalStatus,
-      duration: parseInt(duration) || 0,
+    // Update call status using direct relay function
+    await handleCallStatus({
+      CallSid: callSid,
+      CallStatus: callStatus,
+      Duration: duration,
+      requestId
     });
 
     // Send success response to Twilio
     return new NextResponse('', { status: 200 });
-  } catch (error) {
-    console.error('[Twilio Status Callback] Error:', error);
+  } catch (error: any) {
+    logger.error({ 
+      requestId, 
+      error: error.message,
+      stack: error.stack 
+    }, 'twilio.status.error');
     return new NextResponse('Internal server error', { status: 500 });
   }
 }
