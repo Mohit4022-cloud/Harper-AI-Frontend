@@ -151,6 +151,17 @@ git push origin feature/new-feature
 - **Local**: `http://localhost:3000`
 - **Render**: `https://harper-ai-frontend.onrender.com`
 
+### Twilio & ElevenLabs Integration
+Configuration can be set via:
+1. **UI Settings**: Go to `/settings` → Integrations tab
+2. **Environment Variables** (fallback if not set in UI):
+   - `TWILIO_ACCOUNT_SID`: Your Twilio Account SID
+   - `TWILIO_AUTH_TOKEN`: Your Twilio Auth Token
+   - `TWILIO_CALLER_NUMBER`: Your Twilio phone number (+1234567890)
+   - `ELEVENLABS_API_KEY`: Your ElevenLabs API key
+   - `ELEVENLABS_VOICE_ID`: Voice ID (default: Rachel)
+   - `BASE_URL`: Your deployment URL for webhooks
+
 ### Deployment Process
 1. **Main branch** auto-deploys to: https://harper-ai-frontend.onrender.com
 2. **Environment variables** are managed in Render dashboard

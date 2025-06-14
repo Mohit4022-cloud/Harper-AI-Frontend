@@ -6,12 +6,24 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData()
     const digits = formData.get('Digits') as string
     
+    // Get settings from API
+    const settingsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/settings`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+    
+    const settingsData = await settingsResponse.json()
+    const settings = settingsData.data?.integrations
+    const baseUrl = settings?.baseUrl || process.env.BASE_URL || process.env.NEXT_PUBLIC_API_URL
+    
     const twiml = new twilio.twiml.VoiceResponse()
     
     switch (digits) {
       case '1':
         // Replay the message
-        twiml.redirect(`${process.env.BASE_URL || process.env.NEXT_PUBLIC_API_URL}/api/call/voice`)
+        twiml.redirect(`${baseUrl}/api/call/voice`)
         break
       case '2':
         // End the call
@@ -21,7 +33,7 @@ export async function POST(req: NextRequest) {
       default:
         // Invalid input
         twiml.say('Invalid selection.')
-        twiml.redirect(`${process.env.BASE_URL || process.env.NEXT_PUBLIC_API_URL}/api/call/voice`)
+        twiml.redirect(`${baseUrl}/api/call/voice`)
         break
     }
     

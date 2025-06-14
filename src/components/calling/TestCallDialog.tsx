@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Phone, Loader2, CheckCircle2, XCircle, Volume2 } from 'lucide-react'
 import {
   Dialog,
@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/components/ui/use-toast'
 import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 interface CallResponse {
   success: boolean
@@ -26,8 +27,17 @@ interface CallResponse {
   details?: string
 }
 
+interface TranscriptEntry {
+  role: 'user' | 'agent'
+  text: string
+  timestamp: string
+}
+
 export function TestCallDialog() {
   const [open, setOpen] = useState(false)
+  const [transcript, setTranscript] = useState<TranscriptEntry[]>([])
+  const [currentCallSid, setCurrentCallSid] = useState<string | null>(null)
+  const [isPollingTranscript, setIsPollingTranscript] = useState(false)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'success' | 'error'>('idle')
@@ -81,6 +91,8 @@ export function TestCallDialog() {
       if (response.ok && data.success) {
         setCallStatus('success')
         setCallDetails(data)
+        setCurrentCallSid(data.callSid || null)
+        setIsPollingTranscript(true)
         toast({
           title: 'Call initiated!',
           description: 'You should receive a call shortly.',
@@ -115,7 +127,48 @@ export function TestCallDialog() {
     setPhoneNumber('')
     setCallStatus('idle')
     setCallDetails(null)
+    setTranscript([])
+    setCurrentCallSid(null)
+    setIsPollingTranscript(false)
   }
+
+  // Poll for transcript updates
+  useEffect(() => {
+    if (!currentCallSid || !isPollingTranscript) return
+
+    const pollTranscript = async () => {
+      try {
+        const response = await fetch(`/api/call/transcript?callSid=${currentCallSid}`)
+        if (response.ok) {
+          const data = await response.json()
+          if (data.transcript && data.transcript.length > 0) {
+            setTranscript(data.transcript)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching transcript:', error)
+      }
+    }
+
+    // Initial poll
+    pollTranscript()
+
+    // Set up polling interval
+    const interval = setInterval(pollTranscript, 2000)
+
+    return () => clearInterval(interval)
+  }, [currentCallSid, isPollingTranscript])
+
+  // Stop polling after 60 seconds
+  useEffect(() => {
+    if (isPollingTranscript) {
+      const timeout = setTimeout(() => {
+        setIsPollingTranscript(false)
+      }, 60000)
+
+      return () => clearTimeout(timeout)
+    }
+  }, [isPollingTranscript])
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
@@ -237,6 +290,41 @@ export function TestCallDialog() {
             </div>
           )}
         </div>
+
+        {/* Transcript Section */}
+        {transcript.length > 0 && (
+          <div className="mt-4">
+            <Label className="text-sm font-medium">Live Transcript</Label>
+            <ScrollArea className="h-[200px] w-full rounded-md border bg-muted/50 p-4 mt-2">
+              <div className="space-y-3">
+                {transcript.map((entry, index) => (
+                  <div
+                    key={index}
+                    className={`flex gap-2 ${
+                      entry.role === 'agent' ? 'justify-start' : 'justify-end'
+                    }`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-lg px-3 py-2 ${
+                        entry.role === 'agent'
+                          ? 'bg-white dark:bg-gray-800 border'
+                          : 'bg-purple-600 text-white'
+                      }`}
+                    >
+                      <p className="text-xs font-medium mb-1 opacity-70">
+                        {entry.role === 'agent' ? 'AI Agent' : 'Caller'}
+                      </p>
+                      <p className="text-sm">{entry.text}</p>
+                      <p className="text-xs opacity-50 mt-1">
+                        {new Date(entry.timestamp).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
 
         <DialogFooter>
           {callStatus === 'idle' && (

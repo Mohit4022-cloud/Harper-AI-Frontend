@@ -1,0 +1,3 @@
+[submodule "src/lib/productiv-ai-relay"]
+	path = src/lib/productiv-ai-relay
+	url = https://github.com/Mohit4022-cloud/productiv-ai-relay.git

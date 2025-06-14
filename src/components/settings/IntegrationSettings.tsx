@@ -1,10 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Loader2, Key, Link, Webhook, Save, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react'
+import { 
+  Loader2, 
+  Key, 
+  Phone, 
+  Globe, 
+  Webhook, 
+  Save, 
+  Eye, 
+  EyeOff, 
+  CheckCircle, 
+  XCircle,
+  Volume2,
+  Link2,
+  TestTube,
+  RefreshCw
+} from 'lucide-react'
 import {
   Form,
   FormControl,
@@ -21,51 +36,94 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/components/ui/use-toast'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 // Integration form schema
 const IntegrationFormSchema = z.object({
-  twilioKey: z.string().min(1, 'Twilio API key is required'),
-  elevenLabsKey: z.string().min(1, 'Eleven Labs API key is required'),
-  webhookUrl: z.string().url('Invalid webhook URL').optional().or(z.literal('')),
+  // Twilio
+  twilioAccountSid: z.string().min(34, 'Invalid Account SID').startsWith('AC', 'Must start with AC'),
+  twilioAuthToken: z.string().min(32, 'Invalid Auth Token'),
+  twilioCallerNumber: z.string().regex(/^\+[1-9]\d{1,14}$/, 'Must be E.164 format (+1234567890)'),
+  
+  // ElevenLabs
+  elevenLabsKey: z.string().min(1, 'API key is required'),
+  elevenLabsVoiceId: z.string().min(1, 'Voice ID is required'),
+  elevenLabsAgentId: z.string().min(1, 'Agent ID is required'),
+  elevenLabsAudioUrl: z.string().url('Invalid URL').optional().or(z.literal('')),
+  
+  // General
+  webhookUrl: z.string().url('Invalid URL').optional().or(z.literal('')),
+  baseUrl: z.string().url('Invalid URL').optional().or(z.literal('')),
 })
 
 type IntegrationFormData = z.infer<typeof IntegrationFormSchema>
 
 export function IntegrationSettings() {
   const { toast } = useToast()
-  const { settings, updateSettings } = useSettingsStore()
+  const { settings, updateSettings, fetchSettings } = useSettingsStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isTesting, setIsTesting] = useState(false)
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({
-    twilioKey: false,
+    twilioAuthToken: false,
     elevenLabsKey: false,
   })
+
+  // Load settings on mount
+  useEffect(() => {
+    fetchSettings()
+  }, [fetchSettings])
 
   const form = useForm<IntegrationFormData>({
     resolver: zodResolver(IntegrationFormSchema),
     defaultValues: {
-      twilioKey: settings.integrations.twilioKey || '',
+      twilioAccountSid: settings.integrations.twilioAccountSid || '',
+      twilioAuthToken: settings.integrations.twilioAuthToken || '',
+      twilioCallerNumber: settings.integrations.twilioCallerNumber || '',
       elevenLabsKey: settings.integrations.elevenLabsKey || '',
+      elevenLabsVoiceId: settings.integrations.elevenLabsVoiceId || '21m00Tcm4TlvDq8ikWAM',
+      elevenLabsAgentId: settings.integrations.elevenLabsAgentId || '',
+      elevenLabsAudioUrl: settings.integrations.elevenLabsAudioUrl || '',
       webhookUrl: settings.integrations.webhookUrl || '',
+      baseUrl: settings.integrations.baseUrl || process.env.NEXT_PUBLIC_API_URL || '',
     },
   })
+
+  // Update form when settings change
+  useEffect(() => {
+    form.reset({
+      twilioAccountSid: settings.integrations.twilioAccountSid || '',
+      twilioAuthToken: settings.integrations.twilioAuthToken || '',
+      twilioCallerNumber: settings.integrations.twilioCallerNumber || '',
+      elevenLabsKey: settings.integrations.elevenLabsKey || '',
+      elevenLabsVoiceId: settings.integrations.elevenLabsVoiceId || '21m00Tcm4TlvDq8ikWAM',
+      elevenLabsAgentId: settings.integrations.elevenLabsAgentId || '',
+      elevenLabsAudioUrl: settings.integrations.elevenLabsAudioUrl || '',
+      webhookUrl: settings.integrations.webhookUrl || '',
+      baseUrl: settings.integrations.baseUrl || process.env.NEXT_PUBLIC_API_URL || '',
+    })
+  }, [settings, form])
 
   const onSubmit = async (data: IntegrationFormData) => {
     setIsSubmitting(true)
 
     try {
       await updateSettings({
-        integrations: data,
+        integrations: {
+          ...settings.integrations,
+          ...data,
+        },
       })
 
       toast({
         title: 'Integrations updated',
-        description: 'Your integration settings have been saved.',
+        description: 'Your integration settings have been saved and are ready to use.',
       })
     } catch (error) {
       console.error('Failed to update integrations:', error)
       toast({
         title: 'Update failed',
-        description: 'Failed to update integration settings. Please try again.',
+        description: 'Failed to save integration settings. Please try again.',
         variant: 'destructive',
       })
     } finally {
@@ -80,233 +138,418 @@ export function IntegrationSettings() {
     }))
   }
 
-  // Mock connection status - in production, this would check actual connectivity
-  const connectionStatus = {
-    twilio: settings.integrations.twilioKey ? 'connected' : 'disconnected',
-    elevenLabs: settings.integrations.elevenLabsKey ? 'connected' : 'disconnected',
-    webhook: settings.integrations.webhookUrl ? 'connected' : 'disconnected',
+  const testConnection = async (service: 'twilio' | 'elevenlabs') => {
+    setIsTesting(true)
+    
+    try {
+      const endpoint = service === 'twilio' ? '/api/test/twilio' : '/api/test/elevenlabs'
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form.getValues()),
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        toast({
+          title: `${service === 'twilio' ? 'Twilio' : 'ElevenLabs'} connected!`,
+          description: result.message || 'Connection test successful.',
+        })
+      } else {
+        throw new Error(result.error || 'Connection failed')
+      }
+    } catch (error) {
+      toast({
+        title: 'Connection failed',
+        description: error instanceof Error ? error.message : 'Unable to connect to service',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsTesting(false)
+    }
+  }
+
+  const isConfigured = {
+    twilio: !!(settings.integrations.twilioAccountSid && settings.integrations.twilioAuthToken && settings.integrations.twilioCallerNumber),
+    elevenLabs: !!(settings.integrations.elevenLabsKey && settings.integrations.elevenLabsVoiceId && settings.integrations.elevenLabsAgentId),
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Voice Integration */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Voice Integration</h3>
-          
-          <Card className="p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-medium">Twilio Voice SDK</h4>
-                <p className="text-sm text-gray-600">Connect your Twilio account for voice calling</p>
+        <Tabs defaultValue="twilio" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="twilio" className="flex items-center gap-2">
+              <Phone className="h-4 w-4" />
+              Twilio Voice
+            </TabsTrigger>
+            <TabsTrigger value="elevenlabs" className="flex items-center gap-2">
+              <Volume2 className="h-4 w-4" />
+              ElevenLabs AI
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="twilio" className="space-y-4">
+            <Card className="p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Phone className="h-5 w-5" />
+                    Twilio Configuration
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Connect your Twilio account for voice calling capabilities
+                  </p>
+                </div>
+                <Badge variant={isConfigured.twilio ? 'default' : 'secondary'}>
+                  {isConfigured.twilio ? (
+                    <>
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Configured
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-3 w-3 mr-1" />
+                      Not Configured
+                    </>
+                  )}
+                </Badge>
               </div>
-              <Badge variant={connectionStatus.twilio === 'connected' ? 'default' : 'secondary'}>
-                {connectionStatus.twilio === 'connected' ? (
-                  <>
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Connected
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-3 w-3 mr-1" />
-                    Not Connected
-                  </>
+
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="twilioAccountSid"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Account SID</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="AC..."
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Found in your Twilio Console dashboard
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="twilioAuthToken"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Auth Token</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            type={showKeys.twilioAuthToken ? 'text' : 'password'}
+                            placeholder="Enter your Auth Token"
+                            {...field}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3"
+                            onClick={() => toggleShowKey('twilioAuthToken')}
+                          >
+                            {showKeys.twilioAuthToken ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        Keep this secret - it provides full access to your account
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="twilioCallerNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="+14155551234"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Your Twilio phone number in E.164 format
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="baseUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Base URL</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="https://harper-ai-frontend.onrender.com"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Your deployment URL for webhook callbacks
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {isConfigured.twilio && (
+                  <Alert>
+                    <CheckCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <p>Twilio is configured! Your webhook URLs:</p>
+                        <code className="block text-xs bg-muted p-2 rounded">
+                          Voice: {form.watch('baseUrl')}/api/call/voice<br />
+                          Status: {form.watch('baseUrl')}/api/call/status
+                        </code>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
                 )}
-              </Badge>
-            </div>
 
-            <FormField
-              control={form.control}
-              name="twilioKey"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    <Key className="h-4 w-4 inline mr-1" />
-                    Twilio API Key
-                  </FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Input
-                        type={showKeys.twilioKey ? 'text' : 'password'}
-                        placeholder="Enter your Twilio API key"
-                        {...field}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => toggleShowKey('twilioKey')}
-                      >
-                        {showKeys.twilioKey ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </FormControl>
-                  <FormDescription>
-                    Get your API key from the Twilio Console
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </Card>
-
-          <Card className="p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-medium">Eleven Labs AI Voice</h4>
-                <p className="text-sm text-gray-600">AI-powered voice synthesis for natural conversations</p>
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => testConnection('twilio')}
+                    disabled={!isConfigured.twilio || isTesting}
+                  >
+                    {isTesting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Testing...
+                      </>
+                    ) : (
+                      <>
+                        <TestTube className="mr-2 h-4 w-4" />
+                        Test Connection
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
-              <Badge variant={connectionStatus.elevenLabs === 'connected' ? 'default' : 'secondary'}>
-                {connectionStatus.elevenLabs === 'connected' ? (
-                  <>
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Connected
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-3 w-3 mr-1" />
-                    Not Connected
-                  </>
-                )}
-              </Badge>
-            </div>
+            </Card>
+          </TabsContent>
 
-            <FormField
-              control={form.control}
-              name="elevenLabsKey"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    <Key className="h-4 w-4 inline mr-1" />
-                    Eleven Labs API Key
-                  </FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Input
-                        type={showKeys.elevenLabsKey ? 'text' : 'password'}
-                        placeholder="Enter your Eleven Labs API key"
-                        {...field}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => toggleShowKey('elevenLabsKey')}
-                      >
-                        {showKeys.elevenLabsKey ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </FormControl>
-                  <FormDescription>
-                    Get your API key from your Eleven Labs dashboard
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </Card>
-        </div>
+          <TabsContent value="elevenlabs" className="space-y-4">
+            <Card className="p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Volume2 className="h-5 w-5" />
+                    ElevenLabs Configuration
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    AI-powered voice synthesis for natural conversations
+                  </p>
+                </div>
+                <Badge variant={isConfigured.elevenLabs ? 'default' : 'secondary'}>
+                  {isConfigured.elevenLabs ? (
+                    <>
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Configured
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-3 w-3 mr-1" />
+                      Not Configured
+                    </>
+                  )}
+                </Badge>
+              </div>
+
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="elevenLabsKey"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>API Key</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            type={showKeys.elevenLabsKey ? 'text' : 'password'}
+                            placeholder="sk_..."
+                            {...field}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3"
+                            onClick={() => toggleShowKey('elevenLabsKey')}
+                          >
+                            {showKeys.elevenLabsKey ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        Get your API key from the ElevenLabs dashboard
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="elevenLabsVoiceId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Voice ID</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="21m00Tcm4TlvDq8ikWAM"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Default: Rachel voice. Find more in your ElevenLabs voice library
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="elevenLabsAgentId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Agent ID</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter your ElevenLabs Agent ID"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Your conversational AI agent ID from ElevenLabs
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="elevenLabsAudioUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Pre-generated Audio URL (Optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://your-site.com/greeting.mp3"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Use a pre-generated MP3 file instead of real-time TTS
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => testConnection('elevenlabs')}
+                    disabled={!isConfigured.elevenLabs || isTesting}
+                  >
+                    {isTesting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Testing...
+                      </>
+                    ) : (
+                      <>
+                        <TestTube className="mr-2 h-4 w-4" />
+                        Test Voice
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         <Separator />
 
         {/* Webhook Configuration */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Webhook Configuration</h3>
-          
-          <Card className="p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-medium">Event Webhook</h4>
-                <p className="text-sm text-gray-600">Receive real-time updates for call events</p>
-              </div>
-              <Badge variant={connectionStatus.webhook === 'connected' ? 'default' : 'secondary'}>
-                {connectionStatus.webhook === 'connected' ? (
-                  <>
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Configured
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-3 w-3 mr-1" />
-                    Not Configured
-                  </>
-                )}
-              </Badge>
-            </div>
-
-            <FormField
-              control={form.control}
-              name="webhookUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    <Webhook className="h-4 w-4 inline mr-1" />
-                    Webhook URL
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      type="url"
-                      placeholder="https://your-domain.com/webhook"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Optional: URL to receive call events and transcripts
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </Card>
-        </div>
-
-        {/* Additional Integrations Coming Soon */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Coming Soon</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="p-4 opacity-60">
-              <h4 className="font-medium mb-2">Salesforce CRM</h4>
-              <p className="text-sm text-gray-600">Sync contacts and activities</p>
-              <Button variant="outline" size="sm" className="mt-3" disabled>
-                Coming Soon
-              </Button>
-            </Card>
-            <Card className="p-4 opacity-60">
-              <h4 className="font-medium mb-2">HubSpot CRM</h4>
-              <p className="text-sm text-gray-600">Two-way contact synchronization</p>
-              <Button variant="outline" size="sm" className="mt-3" disabled>
-                Coming Soon
-              </Button>
-            </Card>
-            <Card className="p-4 opacity-60">
-              <h4 className="font-medium mb-2">Slack</h4>
-              <p className="text-sm text-gray-600">Real-time notifications and updates</p>
-              <Button variant="outline" size="sm" className="mt-3" disabled>
-                Coming Soon
-              </Button>
-            </Card>
-            <Card className="p-4 opacity-60">
-              <h4 className="font-medium mb-2">Zapier</h4>
-              <p className="text-sm text-gray-600">Connect with 5000+ apps</p>
-              <Button variant="outline" size="sm" className="mt-3" disabled>
-                Coming Soon
-              </Button>
-            </Card>
+        <Card className="p-6">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Webhook className="h-5 w-5" />
+              Advanced Configuration
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Optional webhook for custom integrations
+            </p>
           </div>
-        </div>
+
+          <FormField
+            control={form.control}
+            name="webhookUrl"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Event Webhook URL</FormLabel>
+                <FormControl>
+                  <Input
+                    type="url"
+                    placeholder="https://your-domain.com/webhook"
+                    {...field}
+                  />
+                </FormControl>
+                <FormDescription>
+                  Receive real-time call events and transcripts
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </Card>
 
         {/* Submit Button */}
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fetchSettings()}
+            disabled={isSubmitting}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? (
               <>
@@ -316,7 +559,7 @@ export function IntegrationSettings() {
             ) : (
               <>
                 <Save className="mr-2 h-4 w-4" />
-                Save Integrations
+                Save All Settings
               </>
             )}
           </Button>

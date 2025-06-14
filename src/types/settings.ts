@@ -16,9 +16,21 @@ export const UserSettingsSchema = z.object({
   }),
   theme: z.enum(['light', 'dark', 'system']),
   integrations: z.object({
-    twilioKey: z.string(),
+    // Twilio Configuration
+    twilioAccountSid: z.string(),
+    twilioAuthToken: z.string(),
+    twilioCallerNumber: z.string(),
+    twilioKey: z.string(), // Keep for backward compatibility
+    
+    // ElevenLabs Configuration
     elevenLabsKey: z.string(),
+    elevenLabsVoiceId: z.string(),
+    elevenLabsAgentId: z.string(),
+    elevenLabsAudioUrl: z.string().url().optional().or(z.literal('')),
+    
+    // General Configuration
     webhookUrl: z.string().url().optional().or(z.literal('')),
+    baseUrl: z.string().url().optional().or(z.literal('')),
   }),
 })
 
@@ -40,8 +52,20 @@ export const defaultUserSettings: UserSettings = {
   },
   theme: 'system',
   integrations: {
-    twilioKey: '',
+    // Twilio
+    twilioAccountSid: '',
+    twilioAuthToken: '',
+    twilioCallerNumber: '',
+    twilioKey: '', // Backward compatibility
+    
+    // ElevenLabs
     elevenLabsKey: '',
+    elevenLabsVoiceId: '21m00Tcm4TlvDq8ikWAM', // Default Rachel voice
+    elevenLabsAgentId: '',
+    elevenLabsAudioUrl: '',
+    
+    // General
     webhookUrl: '',
+    baseUrl: '',
   },
 }

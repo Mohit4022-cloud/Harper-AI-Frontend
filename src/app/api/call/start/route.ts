@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import twilio from 'twilio'
+import { callRelayService } from '@/services/callRelayService'
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,40 +22,63 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const accountSid = process.env.TWILIO_ACCOUNT_SID
-    const authToken = process.env.TWILIO_AUTH_TOKEN
-    const twilioNumber = process.env.TWILIO_CALLER_NUMBER
-    const baseUrl = process.env.BASE_URL || process.env.NEXT_PUBLIC_API_URL
-
-    if (!accountSid || !authToken || !twilioNumber) {
+    // Get settings from API
+    const settingsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/settings`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+    
+    if (!settingsResponse.ok) {
       return NextResponse.json(
-        { error: 'Twilio configuration missing' },
+        { error: 'Failed to fetch settings' },
+        { status: 500 }
+      )
+    }
+    
+    const settingsData = await settingsResponse.json()
+    const settings = settingsData.data?.integrations
+    
+    const accountSid = settings?.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID
+    const authToken = settings?.twilioAuthToken || process.env.TWILIO_AUTH_TOKEN
+    const twilioNumber = settings?.twilioCallerNumber || process.env.TWILIO_CALLER_NUMBER
+    const elevenLabsKey = settings?.elevenLabsKey || process.env.ELEVENLABS_API_KEY
+    const elevenLabsAgentId = settings?.elevenLabsAgentId || process.env.ELEVENLABS_AGENT_ID
+
+    if (!accountSid || !authToken || !twilioNumber || !elevenLabsKey || !elevenLabsAgentId) {
+      return NextResponse.json(
+        { error: 'Twilio/ElevenLabs configuration missing' },
         { status: 500 }
       )
     }
 
-    const client = twilio(accountSid, authToken)
+    // Ensure relay service is running
+    const isHealthy = await callRelayService.health()
+    if (!isHealthy) {
+      // Start the relay service
+      await callRelayService.start({
+        elevenLabsAgentId,
+        elevenLabsApiKey: elevenLabsKey,
+        twilioAccountSid: accountSid,
+        twilioAuthToken: authToken,
+        twilioPhoneNumber: twilioNumber,
+      })
+    }
 
-    // TwiML webhook URL
-    const twimlUrl = `${baseUrl}/api/call/voice`
-
-    const call = await client.calls.create({
-      url: twimlUrl,
+    // Start the call through relay
+    const result = await callRelayService.startAutoDial({
       to: phone,
       from: twilioNumber,
-      method: 'GET',
-      statusCallback: `${baseUrl}/api/call/status`,
-      statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-      statusCallbackMethod: 'POST',
     })
 
     return NextResponse.json({
       success: true,
-      callSid: call.sid,
-      status: call.status,
-      direction: call.direction,
-      from: call.from,
-      to: call.to,
+      callSid: result.callSid,
+      status: 'initiated',
+      direction: 'outbound-api',
+      from: twilioNumber,
+      to: phone,
     })
   } catch (error) {
     console.error('Error starting call:', error)

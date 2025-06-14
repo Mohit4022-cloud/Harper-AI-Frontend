@@ -1,31 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
 import twilio from 'twilio'
+import { callRelayService } from '@/services/callRelayService'
 
 export async function GET(req: NextRequest) {
   try {
     const twiml = new twilio.twiml.VoiceResponse()
     
-    // Use ElevenLabs MP3 if available
-    const elevenLabsUrl = process.env.ELEVENLABS_AUDIO_URL
+    // Get settings from API
+    const settingsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/settings`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
     
-    if (elevenLabsUrl) {
-      // Play ElevenLabs generated audio
-      twiml.play(elevenLabsUrl)
-    } else {
-      // Fallback to Twilio's Polly voice
-      twiml.say(
-        {
-          voice: 'Polly.Joanna',
-          language: 'en-US',
-        },
-        'Hello! This is Harper AI calling. We\'re testing our new outbound calling system powered by Twilio and Eleven Labs. How exciting is that? Have a wonderful day!'
-      )
-    }
+    const settingsData = await settingsResponse.json()
+    const settings = settingsData.data?.integrations
+    
+    // Use ElevenLabs MP3 if available
+    const elevenLabsUrl = settings?.elevenLabsAudioUrl || process.env.ELEVENLABS_AUDIO_URL
+    
+    // Get the media stream URL from relay service
+    const mediaStreamUrl = callRelayService.getMediaStreamUrl()
+    
+    // Connect to the WebSocket stream
+    const connect = twiml.connect()
+    connect.stream({
+      url: mediaStreamUrl,
+    })
     
     // Optional: Gather input
+    const baseUrl = settings?.baseUrl || process.env.BASE_URL || process.env.NEXT_PUBLIC_API_URL
     const gather = twiml.gather({
       numDigits: 1,
-      action: `${process.env.BASE_URL || process.env.NEXT_PUBLIC_API_URL}/api/call/gather`,
+      action: `${baseUrl}/api/call/gather`,
       method: 'POST',
     })
     

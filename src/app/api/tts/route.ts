@@ -14,8 +14,19 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const apiKey = process.env.ELEVENLABS_API_KEY
-    const voiceId = process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM' // Rachel voice
+    // Get settings from API
+    const settingsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/settings`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+    
+    const settingsData = await settingsResponse.json()
+    const settings = settingsData.data?.integrations
+    
+    const apiKey = settings?.elevenLabsKey || process.env.ELEVENLABS_API_KEY
+    const voiceId = settings?.elevenLabsVoiceId || process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM' // Rachel voice
 
     if (!apiKey) {
       return NextResponse.json(
@@ -86,13 +97,24 @@ export async function POST(req: NextRequest) {
 
 // GET endpoint to check if TTS is configured
 export async function GET() {
+  // Get settings from API
+  const settingsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/settings`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+  
+  const settingsData = await settingsResponse.json()
+  const settings = settingsData.data?.integrations
+  
   const isConfigured = !!(
-    process.env.ELEVENLABS_API_KEY && 
-    process.env.ELEVENLABS_VOICE_ID
+    (settings?.elevenLabsKey || process.env.ELEVENLABS_API_KEY) && 
+    (settings?.elevenLabsVoiceId || process.env.ELEVENLABS_VOICE_ID)
   )
 
   return NextResponse.json({
     configured: isConfigured,
-    voiceId: process.env.ELEVENLABS_VOICE_ID || 'not-set',
+    voiceId: settings?.elevenLabsVoiceId || process.env.ELEVENLABS_VOICE_ID || 'not-set',
   })
 }
