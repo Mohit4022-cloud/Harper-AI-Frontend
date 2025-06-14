@@ -38,15 +38,20 @@ export default function DevLoginPage() {
     }
   }
 
-  if (process.env.NODE_ENV !== 'development') {
+  // Allow in development OR if special bypass parameter is present
+  const isDevMode = process.env.NODE_ENV === 'development'
+  const hasRenderBypass = typeof window !== 'undefined' && 
+    window.location.search.includes('render_bypass=true')
+  
+  if (!isDevMode && !hasRenderBypass) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-secondary/10 p-4">
         <Card className="shadow-xl border-0 max-w-md">
           <CardContent className="p-8 text-center">
             <Shield className="h-16 w-16 text-red-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Production Mode</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Restricted</h1>
             <p className="text-gray-600 mb-6">
-              Development bypass is only available in development mode.
+              Development bypass requires special access. Use the regular login instead.
             </p>
             <Button asChild className="gradient-purple-pink hover:opacity-90">
               <a href="/login">Go to Login</a>
@@ -65,7 +70,9 @@ export default function DevLoginPage() {
             <Zap className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Development Bypass</h1>
-          <p className="text-gray-600 mt-2">Quick login for testing (dev mode only)</p>
+          <p className="text-gray-600 mt-2">
+            Quick login for testing {isDevMode ? '(dev mode)' : '(render access)'}
+          </p>
         </div>
 
         <Card className="shadow-xl border-0">
@@ -107,7 +114,9 @@ export default function DevLoginPage() {
 
         <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
           <p className="text-sm text-yellow-800">
-            ⚠️ <strong>Development Only:</strong> This bypass is disabled in production
+            ⚠️ <strong>Testing Mode:</strong> {isDevMode 
+              ? 'Development environment detected' 
+              : 'Special access mode enabled'}
           </p>
         </div>
       </div>
