@@ -13,7 +13,8 @@ import CallHistory from '@/app/calling/components/CallHistory';
 import { useCallStore } from '@/stores/callStore';
 import twilioService from '@/services/twilio/twilioService';
 import TranscriptionService from '@/services/ai/transcriptionService';
-import { TranscriptSegment, CoachingCard, CallAnalytics as ICallAnalytics } from '@/types/advanced';
+import { TranscriptSegment } from '@/types/transcript';
+import { CoachingCard, CallAnalytics as ICallAnalytics } from '@/types/advanced';
 import { generateTranscript, generateCallInsights, generateCoachingSuggestions } from '@/lib/mockDataGenerators';
 
 export default function CallingPage() {
@@ -127,13 +128,15 @@ export default function CallingPage() {
       if (index < mockTranscript.length && isCallActive) {
         const segment = mockTranscript[index];
         setTranscriptSegments(prev => [...prev, {
-          id: `segment-${Date.now()}-${index}`,
-          speaker: segment.speaker,
+          speaker: segment.role as 'agent' | 'customer',
           text: segment.text,
-          startTime: new Date(Date.now() - (mockTranscript.length - index) * 3000),
-          endTime: new Date(),
-          sentiment: segment.sentiment as 'positive' | 'neutral' | 'negative',
-          isPartial: false
+          startTime: Date.now() - (mockTranscript.length - index) * 3000,
+          endTime: Date.now(),
+          sentiment: {
+            score: segment.sentiment === 'positive' ? 0.8 : segment.sentiment === 'negative' ? -0.8 : 0,
+            magnitude: 0.5,
+            label: segment.sentiment as 'positive' | 'neutral' | 'negative'
+          }
         }]);
         index++;
       } else {

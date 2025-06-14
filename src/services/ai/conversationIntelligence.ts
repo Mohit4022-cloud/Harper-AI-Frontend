@@ -1,6 +1,6 @@
+import { TranscriptSegment } from '@/types/transcript';
 import { 
   AIConversationAnalysis, 
-  TranscriptSegment,
   ActionItem,
   FollowUpRecommendation,
   CompetitorMention,
@@ -157,7 +157,7 @@ export class ConversationIntelligenceService {
             name: competitor,
             context: segment.text,
             sentiment: segment.sentiment?.label || 'neutral',
-            timestamp: segment.startTime,
+            timestamp: typeof segment.startTime === 'number' ? segment.startTime : segment.startTime.getTime() / 1000,
           });
         }
       });
@@ -208,7 +208,7 @@ export class ConversationIntelligenceService {
               type: type as BuyingSignal['type'],
               strength: segment.sentiment?.score && segment.sentiment.score > 0.5 ? 'strong' : 'moderate',
               context: segment.text,
-              timestamp: segment.startTime,
+              timestamp: typeof segment.startTime === 'number' ? segment.startTime : segment.startTime.getTime() / 1000,
             });
           }
         });

@@ -1,52 +1,114 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { TranscriptSegment } from '@/types/advanced';
+/**
+ * AI-Powered Transcription API Route
+ * 
+ * Handles audio transcription with speaker diarization and sentiment analysis
+ * Currently returns mock data for development/testing
+ */
 
-// Mock transcription for development
+import { NextRequest, NextResponse } from 'next/server';
+import type { TranscriptSegment } from '@/types/transcript';
+
+/**
+ * Mock transcription function for development
+ * Returns realistic transcript segments with sentiment analysis
+ */
 async function mockTranscribe(audioUrl: string): Promise<TranscriptSegment[]> {
   // Simulate processing delay
   await new Promise(resolve => setTimeout(resolve, 1000));
 
-  // Return mock transcript segments
+  // Return mock transcript segments with timestamps in milliseconds
   return [
     {
       speaker: 'agent',
       text: "Hi, this is John from Harper AI. I'm calling to discuss how we can help improve your sales team's productivity.",
       startTime: 0,
-      endTime: 5,
+      endTime: 5000,
       sentiment: {
         score: 0.8,
         magnitude: 0.7,
         label: 'positive',
-      },
-      keywords: ['Harper AI', 'sales team', 'productivity'],
+      }
     },
     {
       speaker: 'customer',
       text: "Oh, hi John. We're actually looking at solutions for our SDR team. What makes Harper AI different?",
-      startTime: 5,
-      endTime: 10,
+      startTime: 5000,
+      endTime: 10000,
       sentiment: {
         score: 0.6,
         magnitude: 0.5,
         label: 'positive',
-      },
-      keywords: ['solutions', 'SDR team', 'different'],
+      }
     },
     {
       speaker: 'agent',
       text: "Great question! Harper AI uses real-time AI coaching to help SDRs improve during calls, not just after. We provide live sentiment analysis and conversation insights.",
-      startTime: 10,
-      endTime: 17,
+      startTime: 10000,
+      endTime: 17000,
       sentiment: {
         score: 0.9,
         magnitude: 0.8,
         label: 'positive',
-      },
-      keywords: ['real-time AI', 'coaching', 'sentiment analysis', 'conversation insights'],
+      }
     },
+    {
+      speaker: 'customer',
+      text: "That sounds interesting. How accurate is the sentiment analysis? And does it work with our existing phone system?",
+      startTime: 17000,
+      endTime: 22000,
+      sentiment: {
+        score: 0.5,
+        magnitude: 0.6,
+        label: 'positive',
+      }
+    },
+    {
+      speaker: 'agent',
+      text: "Our sentiment analysis is over 90% accurate and continuously improves. We integrate with most major phone systems including RingCentral, Aircall, and Twilio. The setup usually takes less than 30 minutes.",
+      startTime: 22000,
+      endTime: 30000,
+      sentiment: {
+        score: 0.85,
+        magnitude: 0.75,
+        label: 'positive',
+      }
+    },
+    {
+      speaker: 'customer',
+      text: "What about pricing? We have a team of 15 SDRs.",
+      startTime: 30000,
+      endTime: 33000,
+      sentiment: {
+        score: 0.3,
+        magnitude: 0.4,
+        label: 'neutral',
+      }
+    },
+    {
+      speaker: 'agent',
+      text: "For a team of 15, we offer volume pricing that typically comes out to less than the cost of one lost deal per month. I'd be happy to put together a custom quote. Would you be interested in seeing a quick demo first?",
+      startTime: 33000,
+      endTime: 41000,
+      sentiment: {
+        score: 0.75,
+        magnitude: 0.7,
+        label: 'positive',
+      }
+    }
   ];
 }
 
+/**
+ * POST /api/ai/transcribe
+ * 
+ * Transcribes audio and returns segments with sentiment analysis
+ * 
+ * Request body:
+ * - audioUrl: URL of the audio file to transcribe
+ * - config: Optional configuration (model, language, etc.)
+ * 
+ * @returns Transcript segments with speaker identification and sentiment
+ */
 export async function POST(request: NextRequest) {
   try {
     // Verify authentication
@@ -65,39 +127,33 @@ export async function POST(request: NextRequest) {
     // In development or if OpenAI is not configured, use mock transcription
     if (!process.env.OPENAI_API_KEY || process.env.NODE_ENV === 'development') {
       const segments = await mockTranscribe(audioUrl);
-      return NextResponse.json({ segments });
+      return NextResponse.json({ 
+        segments,
+        metadata: {
+          duration: 41000,
+          language: config?.language || 'en-US',
+          confidence: 0.95
+        }
+      });
     }
 
-    // In production, use OpenAI Whisper API
-    // const openai = new OpenAI({
-    //   apiKey: process.env.OPENAI_API_KEY,
-    // });
-    
-    // // Download audio file
-    // const audioResponse = await fetch(audioUrl);
-    // const audioBlob = await audioResponse.blob();
-    // const audioFile = new File([audioBlob], 'audio.mp3', { type: 'audio/mpeg' });
-    
-    // // Transcribe with Whisper
-    // const transcription = await openai.audio.transcriptions.create({
-    //   file: audioFile,
-    //   model: config.model || 'whisper-1',
-    //   language: config.language || 'en',
-    //   response_format: 'verbose_json',
-    // });
-    
-    // // Process transcription into segments with speaker diarization
-    // // This would require additional processing for speaker separation
-    // const segments = processTranscriptionToSegments(transcription);
-    
-    // // Add sentiment analysis
-    // const segmentsWithSentiment = await addSentimentAnalysis(segments);
-    
-    // return NextResponse.json({ segments: segmentsWithSentiment });
+    // Production implementation would go here:
+    // 1. Download audio from URL
+    // 2. Send to OpenAI Whisper API
+    // 3. Process response with speaker diarization
+    // 4. Add sentiment analysis
+    // 5. Return formatted segments
 
     // For now, return mock data
     const segments = await mockTranscribe(audioUrl);
-    return NextResponse.json({ segments });
+    return NextResponse.json({ 
+      segments,
+      metadata: {
+        duration: 41000,
+        language: config?.language || 'en-US',
+        confidence: 0.95
+      }
+    });
   } catch (error) {
     console.error('Transcription error:', error);
     return NextResponse.json(
@@ -105,4 +161,26 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * GET /api/ai/transcribe
+ * 
+ * Returns sample transcript data for testing
+ */
+export async function GET(request: NextRequest) {
+  const segments = await mockTranscribe('sample');
+  return NextResponse.json({
+    segments,
+    metadata: {
+      duration: 41000,
+      language: 'en-US',
+      confidence: 0.95
+    }
+  }, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store'
+    }
+  });
 }

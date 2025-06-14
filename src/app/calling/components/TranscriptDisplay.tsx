@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { MessageSquare, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { TranscriptSegment, SentimentScore } from '@/types/advanced';
+import { TranscriptSegment } from '@/types/transcript';
 import { cn } from '@/lib/utils';
 
 interface TranscriptDisplayProps {
@@ -25,7 +25,7 @@ export default function TranscriptDisplay({
     }
   }, [segments, autoScroll]);
 
-  const getSentimentIcon = (sentiment: SentimentScore) => {
+  const getSentimentIcon = (sentiment: NonNullable<TranscriptSegment['sentiment']>) => {
     switch (sentiment.label) {
       case 'positive':
         return <TrendingUp className="h-4 w-4 text-green-500" />;
@@ -36,7 +36,7 @@ export default function TranscriptDisplay({
     }
   };
 
-  const getSentimentColor = (sentiment: SentimentScore) => {
+  const getSentimentColor = (sentiment: NonNullable<TranscriptSegment['sentiment']>) => {
     switch (sentiment.label) {
       case 'positive':
         return 'border-l-green-500 bg-green-50 dark:bg-green-900/20';
@@ -47,7 +47,9 @@ export default function TranscriptDisplay({
     }
   };
 
-  const formatTime = (seconds: number): string => {
+  const formatTime = (time: number | Date): string => {
+    const ms = time instanceof Date ? time.getTime() : time;
+    const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
