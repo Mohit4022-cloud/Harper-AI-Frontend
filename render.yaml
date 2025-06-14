@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: harper-ai-frontend
+    env: node
+    plan: free
+    buildCommand: npm ci && npx prisma generate && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        value: https://harper-ai-frontend-1.onrender.com
+      - key: DATABASE_URL
+        fromDatabase:
+          name: harper-ai-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NEXT_PUBLIC_APP_VERSION
+        value: "1.1.0"
+    autoDeploy: true
+    branch: main
+    rootDir: .
+    
+databases:
+  - name: harper-ai-db
+    databaseName: harper_ai
+    user: harper_ai_user
+    plan: free
+
+# Build settings
+buildFilter:
+  paths:
+  - src/**
+  - public/**
+  - package*.json
+  - prisma/**
+  - next.config.js
+  - tailwind.config.js
+  - tsconfig.json
+  ignoredPaths:
+  - README.md
+  - docs/**
+  - scripts/**
+  - "*.md"
