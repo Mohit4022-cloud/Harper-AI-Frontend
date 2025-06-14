@@ -42,13 +42,13 @@ const updateCallSchema = z.object({
 }).strict(); // Reject unknown fields
 
 /**
- * Type for route params
+ * Type for route context in Next.js 15.3+
  */
-interface RouteParams {
+type RouteContext = {
   params: {
     id: string;
   };
-}
+};
 
 /**
  * GET /api/calls/[id]
@@ -56,15 +56,15 @@ interface RouteParams {
  * Retrieves a single call by ID
  * 
  * @param request - Next.js request object
- * @param params - Route parameters containing the call ID
+ * @param context - Route context containing the call ID
  * @returns The call object or 404 if not found
  */
 export async function GET(
   request: NextRequest,
-  { params }: RouteParams
+  context: RouteContext
 ) {
   try {
-    const { id } = params;
+    const { id } = context.params;
 
     // Validate ID format (basic check)
     if (!id || typeof id !== 'string') {
@@ -119,15 +119,15 @@ export async function GET(
  * - tags?: string[]
  * 
  * @param request - Next.js request object
- * @param params - Route parameters containing the call ID
+ * @param context - Route context containing the call ID
  * @returns The updated call object or error
  */
 export async function PUT(
   request: NextRequest,
-  { params }: RouteParams
+  context: RouteContext
 ) {
   try {
-    const { id } = params;
+    const { id } = context.params;
 
     // Validate ID format
     if (!id || typeof id !== 'string') {
@@ -206,15 +206,15 @@ export async function PUT(
  * Deletes a call record
  * 
  * @param request - Next.js request object
- * @param params - Route parameters containing the call ID
+ * @param context - Route context containing the call ID
  * @returns 204 No Content on success or error
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteParams
+  context: RouteContext
 ) {
   try {
-    const { id } = params;
+    const { id } = context.params;
 
     // Validate ID format
     if (!id || typeof id !== 'string') {
@@ -253,7 +253,7 @@ export async function DELETE(
  */
 export async function POST(
   request: NextRequest,
-  { params }: RouteParams
+  context: RouteContext
 ) {
   return NextResponse.json(
     { error: 'Method not allowed. Use POST /api/calls to create a new call.' },
