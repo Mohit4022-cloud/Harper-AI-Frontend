@@ -1,172 +1,268 @@
-import { NextRequest } from 'next/server';
-import { 
-  withErrorHandler, 
-  createApiResponse, 
-  simulateDelay,
-  AppError,
-  ErrorTypes
-} from '@/lib/errorHandler';
-import { 
-  generateMockMetrics,
-  generateTrendData,
-  generateTopPerformers
-} from '@/lib/mockDataGenerators';
+import { NextRequest, NextResponse } from 'next/server'
+import { ReportData, ReportMetrics, AIInsight, ChartDataPoint } from '@/types/reports'
+import { faker } from '@faker-js/faker'
+import { addDays, format, parseISO, differenceInDays } from 'date-fns'
 
-// GET /api/reports - Get analytics reports
-export const GET = withErrorHandler(async (request: Request) => {
-  const url = new URL(request.url);
-  const searchParams = url.searchParams;
-  const reportType = searchParams.get('type') || 'overview';
-  const startDate = searchParams.get('startDate');
-  const endDate = searchParams.get('endDate');
-  const groupBy = searchParams.get('groupBy') || 'day';
-  
-  // Validate date range
-  const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const end = endDate ? new Date(endDate) : new Date();
-  
-  if (start > end) {
-    throw new AppError(
-      'Start date must be before end date',
-      ErrorTypes.VALIDATION_ERROR,
-      { startDate, endDate }
-    );
-  }
-  
-  // Simulate API delay
-  await simulateDelay(600);
-  
-  // Generate report data based on type
-  let reportData;
-  
-  switch (reportType) {
-    case 'overview':
-      reportData = generateMockMetrics({ start, end });
-      break;
-      
-    case 'calls':
-      reportData = {
-        summary: {
-          totalCalls: 2847,
-          avgDuration: 4.3,
-          connectRate: 0.32,
-          bestTimeToCall: '10:00 AM - 12:00 PM',
-          worstTimeToCall: '4:00 PM - 6:00 PM'
-        },
-        byOutcome: {
-          connected: 912,
-          voicemail: 743,
-          no_answer: 892,
-          busy: 187,
-          failed: 113
-        },
-        bySentiment: {
-          positive: 412,
-          neutral: 387,
-          negative: 113
-        },
-        trends: generateTrendData(30)
-      };
-      break;
-      
-    case 'performance':
-      reportData = {
-        team: generateTopPerformers(),
-        leaderboard: {
-          mostCalls: { name: 'Sarah Johnson', value: 487 },
-          bestConnectRate: { name: 'Mike Chen', value: 0.42 },
-          mostMeetings: { name: 'Emily Davis', value: 28 },
-          highestRevenue: { name: 'John Smith', value: 187500 }
-        },
-        trends: generateTrendData(30)
-      };
-      break;
-      
-    case 'sentiment':
-      reportData = {
-        overall: {
-          score: 0.24,
-          trend: 'improving',
-          change: 0.08
-        },
-        distribution: {
-          veryPositive: 15,
-          positive: 35,
-          neutral: 30,
-          negative: 15,
-          veryNegative: 5
-        },
-        byTopic: {
-          pricing: -0.12,
-          features: 0.45,
-          support: 0.67,
-          competition: -0.23
-        },
-        trends: generateTrendData(30).map(day => ({
-          ...day,
-          sentiment: {
-            positive: Math.random() * 50 + 25,
-            neutral: Math.random() * 30 + 20,
-            negative: Math.random() * 20 + 5
-          }
-        }))
-      };
-      break;
-      
-    default:
-      throw new AppError(
-        'Invalid report type',
-        ErrorTypes.VALIDATION_ERROR,
-        { validTypes: ['overview', 'calls', 'performance', 'sentiment'] }
-      );
-  }
-  
-  return createApiResponse(
-    {
-      type: reportType,
-      dateRange: { start, end },
-      groupBy,
-      data: reportData
-    },
-    'Report generated successfully',
-    { 
-      generatedAt: new Date(),
-      cacheExpiry: new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
+/**
+ * GET /api/reports
+ * Generate analytics report for the specified period
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const period = searchParams.get('period') || 'week'
+    const startDate = searchParams.get('startDate') || new Date().toISOString()
+    const endDate = searchParams.get('endDate') || new Date().toISOString()
+    
+    // Generate mock metrics
+    const metrics = generateMockMetrics()
+    
+    // Generate AI insights based on metrics
+    const insights = generateAIInsights(metrics)
+    
+    // Generate chart data for the date range
+    const chartData = generateChartData(startDate, endDate)
+    
+    // Create report data
+    const reportData: ReportData = {
+      period: period as any,
+      startDate,
+      endDate,
+      metrics,
+      insights,
+      chartData,
+      lastUpdated: new Date().toISOString(),
     }
-  );
-});
+    
+    // Simulate API delay
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    
+    return NextResponse.json({
+      success: true,
+      data: reportData,
+    })
+  } catch (error) {
+    console.error('Error generating report:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to generate report',
+      },
+      { status: 500 }
+    )
+  }
+}
 
-// POST /api/reports/export - Export report data
-export const POST = withErrorHandler(async (request: Request) => {
-  const body = await request.json();
-  const { format = 'csv', reportType, dateRange } = body;
+/**
+ * Generate mock metrics
+ */
+function generateMockMetrics(): ReportMetrics {
+  const totalCalls = faker.number.int({ min: 50, max: 200 })
+  const connectedCalls = faker.number.int({ min: 30, max: totalCalls })
+  const meetingsScheduled = faker.number.int({ min: 10, max: 50 })
+  const meetingsCompleted = faker.number.int({ min: 5, max: meetingsScheduled })
+  const dealsWon = faker.number.int({ min: 2, max: 15 })
+  const dealsLost = faker.number.int({ min: 1, max: 10 })
+  const emailsSent = faker.number.int({ min: 100, max: 500 })
   
-  // Validate format
-  if (!['csv', 'xlsx', 'pdf', 'json'].includes(format)) {
-    throw new AppError(
-      'Invalid export format',
-      ErrorTypes.VALIDATION_ERROR,
-      { validFormats: ['csv', 'xlsx', 'pdf', 'json'] }
-    );
+  return {
+    // Call Metrics
+    totalCalls,
+    connectedCalls,
+    avgCallDuration: faker.number.int({ min: 120, max: 600 }),
+    connectRate: Math.round((connectedCalls / totalCalls) * 100),
+    
+    // Meeting Metrics
+    meetingsScheduled,
+    meetingsCompleted,
+    meetingConversionRate: Math.round((meetingsScheduled / connectedCalls) * 100),
+    
+    // Contact Metrics
+    totalContacts: faker.number.int({ min: 100, max: 500 }),
+    newContacts: faker.number.int({ min: 20, max: 100 }),
+    activeContacts: faker.number.int({ min: 50, max: 200 }),
+    
+    // Revenue Metrics
+    revenue: faker.number.int({ min: 10000, max: 100000 }),
+    avgDealSize: faker.number.int({ min: 1000, max: 10000 }),
+    dealsWon,
+    dealsLost,
+    winRate: Math.round((dealsWon / (dealsWon + dealsLost)) * 100),
+    
+    // Activity Metrics
+    emailsSent,
+    emailOpenRate: faker.number.int({ min: 15, max: 35 }),
+    emailReplyRate: faker.number.int({ min: 5, max: 15 }),
+    tasksCompleted: faker.number.int({ min: 20, max: 80 }),
+    
+    // Performance Metrics
+    avgResponseTime: faker.number.float({ min: 0.5, max: 4, fractionDigits: 1 }),
+    followUpRate: faker.number.int({ min: 60, max: 95 }),
+    leadVelocity: faker.number.float({ min: 1, max: 10, fractionDigits: 1 }),
+  }
+}
+
+/**
+ * Generate AI insights based on metrics
+ */
+function generateAIInsights(metrics: ReportMetrics): AIInsight[] {
+  const insights: AIInsight[] = []
+  
+  // Generate insights based on metrics
+  if (metrics.connectRate > 60) {
+    insights.push({
+      id: faker.string.uuid(),
+      type: 'achievement',
+      title: 'Excellent Connect Rate',
+      description: `Your connect rate of ${metrics.connectRate}% is above industry average. Keep up the great work!`,
+      priority: 'high',
+      metric: 'connectRate',
+      change: faker.number.int({ min: 5, max: 15 }),
+      createdAt: new Date().toISOString(),
+    })
+  } else if (metrics.connectRate < 40) {
+    insights.push({
+      id: faker.string.uuid(),
+      type: 'alert',
+      title: 'Low Connect Rate',
+      description: `Your connect rate of ${metrics.connectRate}% needs improvement. Try calling at different times.`,
+      priority: 'high',
+      metric: 'connectRate',
+      change: faker.number.int({ min: -15, max: -5 }),
+      createdAt: new Date().toISOString(),
+    })
   }
   
-  // Simulate export generation
-  await simulateDelay(1500);
+  if (metrics.meetingConversionRate > 30) {
+    insights.push({
+      id: faker.string.uuid(),
+      type: 'trend',
+      title: 'Strong Meeting Conversion',
+      description: `${metrics.meetingConversionRate}% of your calls are converting to meetings. This is excellent!`,
+      priority: 'medium',
+      metric: 'meetingConversionRate',
+      change: faker.number.int({ min: 5, max: 20 }),
+      createdAt: new Date().toISOString(),
+    })
+  }
   
-  // Generate export URL
-  const exportId = `export_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-  const exportUrl = `https://api.harperai.com/exports/${exportId}.${format}`;
+  // Revenue insights
+  if (metrics.winRate > 25) {
+    insights.push({
+      id: faker.string.uuid(),
+      type: 'achievement',
+      title: 'High Win Rate',
+      description: `Your win rate of ${metrics.winRate}% is impressive. You're closing ${metrics.dealsWon} deals successfully.`,
+      priority: 'high',
+      metric: 'winRate',
+      change: faker.number.int({ min: 5, max: 15 }),
+      createdAt: new Date().toISOString(),
+    })
+  }
   
-  return createApiResponse(
-    {
-      exportId,
-      url: exportUrl,
-      format,
-      size: Math.floor(Math.random() * 500000) + 100000, // 100KB - 600KB
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-      status: 'ready'
-    },
-    'Export generated successfully',
-    { reportType, dateRange }
-  );
-});
+  // Activity recommendations
+  if (metrics.emailReplyRate < 10) {
+    insights.push({
+      id: faker.string.uuid(),
+      type: 'recommendation',
+      title: 'Improve Email Engagement',
+      description: 'Your email reply rate is low. Consider personalizing subject lines and content more.',
+      priority: 'medium',
+      metric: 'emailReplyRate',
+      change: faker.number.int({ min: -10, max: -5 }),
+      createdAt: new Date().toISOString(),
+    })
+  }
+  
+  // Performance insights
+  if (metrics.avgResponseTime > 2) {
+    insights.push({
+      id: faker.string.uuid(),
+      type: 'alert',
+      title: 'Slow Response Time',
+      description: `Your average response time is ${metrics.avgResponseTime} hours. Try to respond within 1 hour for better engagement.`,
+      priority: 'medium',
+      metric: 'avgResponseTime',
+      change: faker.number.int({ min: 10, max: 25 }),
+      createdAt: new Date().toISOString(),
+    })
+  }
+  
+  // Add a general trend insight
+  insights.push({
+    id: faker.string.uuid(),
+    type: 'trend',
+    title: 'Overall Activity Trend',
+    description: `You've made ${metrics.totalCalls} calls and sent ${metrics.emailsSent} emails this period. ${
+      metrics.leadVelocity > 5 ? 'Your lead velocity is strong!' : 'Focus on increasing your activity levels.'
+    }`,
+    priority: 'low',
+    metric: 'leadVelocity',
+    change: faker.number.int({ min: -10, max: 20 }),
+    createdAt: new Date().toISOString(),
+  })
+  
+  return insights
+}
+
+/**
+ * Generate chart data for the date range
+ */
+function generateChartData(startDate: string, endDate: string) {
+  const start = parseISO(startDate)
+  const end = parseISO(endDate)
+  const days = differenceInDays(end, start) + 1
+  
+  const calls: ChartDataPoint[] = []
+  const meetings: ChartDataPoint[] = []
+  const revenue: ChartDataPoint[] = []
+  const contacts: ChartDataPoint[] = []
+  
+  let cumulativeRevenue = 0
+  let cumulativeContacts = faker.number.int({ min: 50, max: 100 })
+  
+  for (let i = 0; i < days; i++) {
+    const date = addDays(start, i)
+    const dateStr = format(date, 'yyyy-MM-dd')
+    
+    // Generate daily data
+    const dailyCalls = faker.number.int({ min: 5, max: 20 })
+    const dailyMeetings = faker.number.int({ min: 0, max: 5 })
+    const dailyRevenue = faker.number.int({ min: 0, max: 10000 })
+    const dailyContacts = faker.number.int({ min: 0, max: 10 })
+    
+    cumulativeRevenue += dailyRevenue
+    cumulativeContacts += dailyContacts
+    
+    calls.push({
+      date: dateStr,
+      value: dailyCalls,
+      label: format(date, 'MMM d'),
+    })
+    
+    meetings.push({
+      date: dateStr,
+      value: dailyMeetings,
+      label: format(date, 'MMM d'),
+    })
+    
+    revenue.push({
+      date: dateStr,
+      value: cumulativeRevenue,
+      label: format(date, 'MMM d'),
+    })
+    
+    contacts.push({
+      date: dateStr,
+      value: cumulativeContacts,
+      label: format(date, 'MMM d'),
+    })
+  }
+  
+  return {
+    calls,
+    meetings,
+    revenue,
+    contacts,
+  }
+}
