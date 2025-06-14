@@ -47,7 +47,69 @@ A comprehensive, production-ready Sales Development Representative (SDR) platfor
 - **Team-shared configuration** - Standardized development environment
 
 ### ✅ **Production Deployment**
-- **Live on Render** - https://harper-ai-frontend-1.onrender.com
+- **Live on Render** - https://harper-ai-frontend-2.onrender.com
+
+## 🔧 **Integrations**
+
+### Twilio + ElevenLabs Relay Integration
+
+The Harper AI platform integrates with `productiv-ai-relay` for AI-powered voice calling capabilities.
+
+#### Required Dependencies
+
+The relay requires specific Node.js dependencies to be installed in the main project:
+
+```bash
+# Install relay dependencies
+npm install fastify@4.26.0 @fastify/formbody@7.4.0 @fastify/websocket@8.3.1 ws@8.16.0 pino-pretty@10.3.1
+```
+
+These dependencies are already included in `package.json` and will be installed automatically with `npm install`.
+
+#### Relay Configuration
+
+Configure the relay startup behavior via environment variables:
+
+```bash
+# Relay startup configuration
+RELAY_STARTUP_TIMEOUT_MS=30000    # Max time to wait for relay to start (default: 30s)
+RELAY_MAX_ATTEMPTS=3              # Number of retry attempts (default: 3)
+RELAY_INITIAL_DELAY_MS=1000       # Initial retry delay (default: 1s)
+RELAY_MAX_DELAY_MS=10000          # Maximum retry delay (default: 10s)
+RELAY_BACKOFF_FACTOR=2            # Exponential backoff factor (default: 2)
+RELAY_PORT=8000                   # Port for relay service (default: 8000)
+```
+
+#### Troubleshooting Relay Issues
+
+If the relay fails to start, you'll receive a structured error response:
+
+```json
+{
+  "error": "Relay service unavailable",
+  "details": "Failed after 3 attempts: Missing dependencies",
+  "troubleshooting": [
+    "Run: npm install",
+    "Ensure fastify and other relay dependencies are in package.json",
+    "Check that node_modules is not in .gitignore for the relay"
+  ]
+}
+```
+
+Common issues and solutions:
+
+1. **Missing Dependencies**: Run `npm install` to install all relay dependencies
+2. **Port Already in Use**: Change `RELAY_PORT` to a different port
+3. **Submodule Not Initialized**: Run `git submodule update --init --recursive`
+4. **Node.js Not Found**: Ensure Node.js 18+ is installed and in PATH
+
+#### Build Configuration
+
+For production deployments (e.g., Render), ensure your build command includes:
+
+```bash
+git submodule update --init --recursive && npm ci && npm run build
+```
 - **Auto-deployment** - GitHub integration with branch-based deployment
 - **Environment variables** - Production-ready configuration
 - **Debug logging** - Console output for production troubleshooting

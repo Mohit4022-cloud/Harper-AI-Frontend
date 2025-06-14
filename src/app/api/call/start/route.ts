@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callRelayService } from '@/services/callRelayService'
 import { logger } from '@/lib/logger'
+import { RelayStartupError, createRelayErrorResponse } from '@/lib/relayBootstrap'
 
 /**
  * POST /api/call/start
@@ -80,14 +81,28 @@ export async function POST(req: NextRequest) {
       const isHealthy = await callRelayService.health()
       if (!isHealthy) {
         logger.info({ requestId }, 'call.start.relay_starting')
-        // Start the relay service
-        await callRelayService.start({
-          elevenLabsAgentId,
-          elevenLabsApiKey: elevenLabsKey,
-          twilioAccountSid: accountSid,
-          twilioAuthToken: authToken,
-          twilioPhoneNumber: twilioNumber,
-        })
+        try {
+          // Start the relay service with retry logic
+          await callRelayService.start({
+            elevenLabsAgentId,
+            elevenLabsApiKey: elevenLabsKey,
+            twilioAccountSid: accountSid,
+            twilioAuthToken: authToken,
+            twilioPhoneNumber: twilioNumber,
+          })
+        } catch (relayError: any) {
+          logger.error({ requestId, error: relayError }, 'call.start.relay_startup_failed')
+          
+          // Return structured error response
+          const errorResponse = createRelayErrorResponse(relayError)
+          return NextResponse.json(
+            { 
+              success: false, 
+              ...errorResponse
+            },
+            { status: 502 }
+          )
+        }
       }
 
       // Start the call through relay

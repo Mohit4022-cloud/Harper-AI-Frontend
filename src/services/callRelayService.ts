@@ -3,9 +3,10 @@
  * Wrapper for productiv-ai-relay functionality
  */
 
-import { spawn, ChildProcess } from 'child_process'
-import path from 'path'
+import { ChildProcess } from 'child_process'
 import axios from 'axios'
+import { startRelayWithRetry, RelayConfig } from '@/lib/relayBootstrap'
+import { logger } from '@/lib/logger'
 
 export interface CallRelayConfig {
   elevenLabsAgentId: string
@@ -41,71 +42,43 @@ class CallRelayService {
   }
 
   /**
-   * Start the relay server process
+   * Start the relay server process with retry logic
    */
   async start(config: CallRelayConfig): Promise<void> {
     if (this.isRunning) {
-      console.log('Call relay service is already running')
+      logger.info('Call relay service is already running')
       return
     }
 
     this.config = config
-    const relayPath = path.join(process.cwd(), 'src/lib/productiv-ai-relay')
     const port = config.relayPort || 8000
     this.relayUrl = `http://localhost:${port}`
 
-    // Set up environment variables for the relay process
-    const env = {
-      ...process.env,
-      ELEVENLABS_AGENT_ID: config.elevenLabsAgentId,
-      ELEVENLABS_API_KEY: config.elevenLabsApiKey,
-      TWILIO_ACCOUNT_SID: config.twilioAccountSid,
-      TWILIO_AUTH_TOKEN: config.twilioAuthToken,
-      TWILIO_PHONE_NUMBER: config.twilioPhoneNumber,
-      PORT: port.toString(),
-    }
+    try {
+      // Use the relay bootstrap with retry logic
+      const relayConfig: RelayConfig = {
+        elevenLabsAgentId: config.elevenLabsAgentId,
+        elevenLabsApiKey: config.elevenLabsApiKey,
+        twilioAccountSid: config.twilioAccountSid,
+        twilioAuthToken: config.twilioAuthToken,
+        twilioPhoneNumber: config.twilioPhoneNumber,
+        relayPort: port,
+      }
 
-    return new Promise((resolve, reject) => {
-      this.relayProcess = spawn('node', ['index.js'], {
-        cwd: relayPath,
-        env,
-        stdio: ['inherit', 'pipe', 'pipe'],
-      })
+      this.relayProcess = await startRelayWithRetry(relayConfig)
+      this.isRunning = true
 
-      this.relayProcess.stdout?.on('data', (data) => {
-        const output = data.toString()
-        console.log('[Relay]:', output)
-        
-        // Check if server is ready
-        if (output.includes('Server listening on')) {
-          this.isRunning = true
-          resolve()
-        }
-      })
-
-      this.relayProcess.stderr?.on('data', (data) => {
-        console.error('[Relay Error]:', data.toString())
-      })
-
-      this.relayProcess.on('error', (error) => {
-        console.error('Failed to start relay process:', error)
-        this.isRunning = false
-        reject(error)
-      })
-
+      // Monitor process exit
       this.relayProcess.on('exit', (code) => {
-        console.log(`Relay process exited with code ${code}`)
+        logger.warn({ code }, 'Relay process exited')
         this.isRunning = false
+        this.relayProcess = null
       })
-
-      // Timeout if server doesn't start within 10 seconds
-      setTimeout(() => {
-        if (!this.isRunning) {
-          this.stop()
-          reject(new Error('Relay server failed to start within timeout'))
-        }
-      }, 10000)
-    })
+    } catch (error) {
+      logger.error({ error }, 'Failed to start relay service')
+      this.isRunning = false
+      throw error
+    }
   }
 
   /**
