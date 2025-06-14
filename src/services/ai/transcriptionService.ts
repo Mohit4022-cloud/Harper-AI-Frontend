@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { TranscriptSegment, SentimentScore } from '@/types/transcript';
+import { TranscriptSegment } from '@/types/transcript';
 
 export interface TranscriptionConfig {
   apiKey: string;
