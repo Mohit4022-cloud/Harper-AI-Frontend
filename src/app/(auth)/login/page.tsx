@@ -195,6 +195,20 @@ export default function LoginPage() {
                 Sign up
               </Link>
             </p>
+
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-xs text-yellow-800 text-center mb-2">
+                  🚀 <strong>Development Mode</strong>
+                </p>
+                <Link 
+                  href="/dev-login"
+                  className="block w-full text-center text-sm font-medium text-yellow-800 hover:text-yellow-900 underline"
+                >
+                  Skip Login (Dev Bypass) →
+                </Link>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

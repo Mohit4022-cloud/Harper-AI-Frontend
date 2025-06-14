@@ -91,6 +91,13 @@ sdr@harperai.com / password123
 demo@harperai.com / password123
 ```
 
+### 🚀 Development Bypass (Skip Login)
+**Quick Access**: http://localhost:3000/dev-login
+- One-click login as any test user
+- Available only in development mode
+- Automatically disabled in production
+- Also accessible from login page "Skip Login (Dev Bypass)" link
+
 ### Manual Testing Checklist
 - [ ] Login works without network errors
 - [ ] All navigation links work (no 404s)

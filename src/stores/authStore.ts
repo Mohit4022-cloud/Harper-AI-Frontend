@@ -17,6 +17,10 @@ interface AuthState {
   updateUser: (user: Partial<User>) => void
   clearError: () => void
   setLoading: (loading: boolean) => void
+  
+  // Dev bypass methods
+  setUser: (user: User) => void
+  setToken: (token: string, refreshToken: string) => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -102,6 +106,15 @@ export const useAuthStore = create<AuthState>()(
 
       setLoading: (loading: boolean) => {
         set({ isLoading: loading })
+      },
+
+      // Dev bypass methods
+      setUser: (user: User) => {
+        set({ user })
+      },
+
+      setToken: (token: string, refreshToken: string) => {
+        set({ token, refreshToken })
       },
     }),
     {
