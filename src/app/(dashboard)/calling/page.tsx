@@ -4,15 +4,17 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PhoneCall, Users, History, Settings } from 'lucide-react';
+import { PhoneCall, Users, History, Settings, Sparkles, AlertCircle } from 'lucide-react';
 import Dialer from '@/app/calling/components/Dialer';
 import TranscriptDisplay from '@/app/calling/components/TranscriptDisplay';
 import CoachingCards from '@/app/calling/components/CoachingCards';
 import CallAnalytics from '@/app/calling/components/CallAnalytics';
+import CallHistory from '@/app/calling/components/CallHistory';
 import { useCallStore } from '@/stores/callStore';
 import twilioService from '@/services/twilio/twilioService';
 import TranscriptionService from '@/services/ai/transcriptionService';
 import { TranscriptSegment, CoachingCard, CallAnalytics as ICallAnalytics } from '@/types/advanced';
+import { generateTranscript, generateCallInsights, generateCoachingSuggestions } from '@/lib/mockDataGenerators';
 
 export default function CallingPage() {
   const [activeTab, setActiveTab] = useState('dialer');
@@ -57,66 +59,114 @@ export default function CallingPage() {
 
   const handleCall = async (phoneNumber: string) => {
     try {
-      const callSid = await twilioService.makeCall({
-        to: phoneNumber,
-        recordingEnabled: true,
-        transcriptionEnabled: true,
+      // Call the mock API
+      const response = await fetch('/api/calls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber, contactId: 'mock-contact-001' })
       });
-
+      
+      const { data: callSession } = await response.json();
+      
       setIsCallActive(true);
       setCallDuration(0);
-
-      // Initialize real-time transcription
-      if (process.env.NEXT_PUBLIC_ENABLE_REAL_TIME_TRANSCRIPTION === 'true') {
-        const service = new TranscriptionService({
-          apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || '',
-          enableRealTime: true,
-          enableSpeakerDiarization: true,
-        });
-
-        // Set up transcription event listeners
-        service.on('partial', (event: any) => {
-          if (event.segment) {
-            updateTranscript(event.segment, true);
-          }
-        });
-
-        service.on('final', (event: any) => {
-          if (event.segment) {
-            updateTranscript(event.segment, false);
-          }
-        });
-
-        service.on('sentiment', (sentiment: any) => {
-          updateAnalytics(sentiment);
-        });
-
-        setTranscriptionService(service);
-        
-        // Start transcription with a mock stream for now
-        // In production, this would use the actual call audio stream
-        const mockStream = new MediaStream();
-        await service.startRealTimeTranscription(mockStream, callSid);
-      }
-
-      // Simulate coaching cards for demo
-      setTimeout(() => {
-        setCoachingCards([
-          {
-            id: '1',
-            type: 'tip',
-            title: 'Slow down your pace',
-            content: 'You\'re speaking 180 words per minute. Try to slow down to 140-160 for better clarity.',
-            priority: 'medium',
-            triggerCondition: 'speaking_pace > 170',
+      
+      // Start simulating real-time transcription
+      startMockTranscription();
+      
+      // Simulate dynamic coaching cards
+      startCoachingSimulation();
+      
+      // Initialize mock analytics
+      setCallAnalytics({
+        sentimentAnalysis: {
+          overall: {
+            score: 0.2,
+            magnitude: 0.7,
+            label: 'positive'
           },
-        ]);
-      }, 5000);
+          timeline: [],
+          customerSentiment: {
+            score: 0.15,
+            magnitude: 0.6,
+            label: 'positive'
+          },
+          agentSentiment: {
+            score: 0.25,
+            magnitude: 0.8,
+            label: 'positive'
+          }
+        },
+        performanceScore: {
+          overall: 75,
+          categories: {
+            discovery: 80,
+            presentation: 70,
+            objectionHandling: 75,
+            closing: 65,
+            rapport: 85
+          }
+        },
+        talkRatio: 0.6,
+        interruptionCount: 2,
+        silencePercentage: 15,
+        keywordsDetected: ['pricing', 'features', 'timeline', 'budget']
+      });
 
     } catch (error) {
       console.error('Failed to make call:', error);
       setIsCallActive(false);
     }
+  };
+  
+  const startMockTranscription = () => {
+    const mockTranscript = generateTranscript();
+    let index = 0;
+    
+    const interval = setInterval(() => {
+      if (index < mockTranscript.length && isCallActive) {
+        const segment = mockTranscript[index];
+        setTranscriptSegments(prev => [...prev, {
+          id: `segment-${Date.now()}-${index}`,
+          speaker: segment.speaker,
+          text: segment.text,
+          startTime: new Date(Date.now() - (mockTranscript.length - index) * 3000),
+          endTime: new Date(),
+          sentiment: segment.sentiment as 'positive' | 'neutral' | 'negative',
+          isPartial: false
+        }]);
+        index++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 3000); // Add new segment every 3 seconds
+    
+    return () => clearInterval(interval);
+  };
+  
+  const startCoachingSimulation = () => {
+    const suggestions = generateCoachingSuggestions();
+    let suggestionIndex = 0;
+    
+    const interval = setInterval(() => {
+      if (suggestionIndex < suggestions.length && isCallActive) {
+        const suggestion = suggestions[suggestionIndex];
+        setCoachingCards(prev => [...prev, {
+          id: `card-${Date.now()}`,
+          type: suggestion.type as any,
+          title: suggestion.title,
+          content: suggestion.suggestion,
+          priority: suggestion.priority as any,
+          script: suggestion.script,
+          triggerCondition: 'manual'
+        }]);
+        suggestionIndex++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 15000); // New coaching card every 15 seconds
+    
+    return () => clearInterval(interval);
   };
 
   const handleEndCall = async () => {
@@ -155,35 +205,56 @@ export default function CallingPage() {
         // Update the last segment if it's partial
         const last = prev[prev.length - 1];
         if (last.speaker === segment.speaker) {
-          return [...prev.slice(0, -1), segment];
+          return [...prev.slice(0, -1), { ...segment, isPartial }];
         }
       }
-      return [...prev, segment];
+      return [...prev, { ...segment, isPartial }];
     });
   };
 
   const updateAnalytics = (sentiment: any) => {
     // Update analytics based on sentiment data
-    setCallAnalytics(prev => ({
-      ...prev!,
-      sentimentAnalysis: {
-        ...prev?.sentimentAnalysis!,
-        overall: sentiment,
-      },
-    }));
+    setCallAnalytics(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        sentimentAnalysis: {
+          ...prev.sentimentAnalysis,
+          overall: {
+            score: sentiment.score || 0,
+            magnitude: sentiment.magnitude || 0.5,
+            label: sentiment.label || 'neutral'
+          }
+        }
+      };
+    });
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">AI-Powered Calling</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
+            AI-Powered Calling
+            <span className="px-3 py-1 text-sm bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full flex items-center gap-1">
+              <Sparkles className="h-3 w-3" />
+              AI Enhanced
+            </span>
+          </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
             Make intelligent calls with real-time coaching and analytics
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {isCallActive && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-red-100 dark:bg-red-900/20 rounded-lg animate-pulse">
+              <div className="h-3 w-3 bg-red-500 rounded-full animate-pulse" />
+              <span className="text-red-700 dark:text-red-400 font-medium">
+                Call Active • {Math.floor(callDuration / 60)}:{(callDuration % 60).toString().padStart(2, '0')}
+              </span>
+            </div>
+          )}
           <Button variant="outline" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             Call Settings
@@ -230,9 +301,7 @@ export default function CallingPage() {
             </TabsContent>
 
             <TabsContent value="history">
-              <Card className="p-6">
-                <p className="text-center text-gray-500">Call history coming soon</p>
-              </Card>
+              <CallHistory />
             </TabsContent>
           </Tabs>
 

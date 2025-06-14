@@ -30,12 +30,14 @@ export interface TranscriptData {
 }
 
 export interface TranscriptSegment {
-  speaker: 'agent' | 'customer';
+  id?: string;
+  speaker: string;
   text: string;
-  startTime: number;
-  endTime: number;
-  sentiment?: SentimentScore;
+  startTime: Date;
+  endTime: Date;
+  sentiment?: 'positive' | 'neutral' | 'negative';
   keywords?: string[];
+  isPartial?: boolean;
 }
 
 export interface KeyMoment {
