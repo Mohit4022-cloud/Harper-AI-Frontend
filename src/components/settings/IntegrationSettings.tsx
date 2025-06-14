@@ -42,14 +42,23 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 // Integration form schema
 const IntegrationFormSchema = z.object({
   // Twilio
-  twilioAccountSid: z.string().min(34, 'Invalid Account SID').startsWith('AC', 'Must start with AC'),
-  twilioAuthToken: z.string().min(32, 'Invalid Auth Token'),
-  twilioCallerNumber: z.string().regex(/^\+[1-9]\d{1,14}$/, 'Must be E.164 format (+1234567890)'),
+  twilioAccountSid: z.string().optional().refine(
+    (val) => !val || (val.length >= 34 && val.startsWith('AC')),
+    'Invalid Account SID - must start with AC'
+  ),
+  twilioAuthToken: z.string().optional().refine(
+    (val) => !val || val.length >= 32,
+    'Invalid Auth Token - must be at least 32 characters'
+  ),
+  twilioCallerNumber: z.string().optional().refine(
+    (val) => !val || /^\+[1-9]\d{1,14}$/.test(val),
+    'Must be E.164 format (+1234567890)'
+  ),
   
   // ElevenLabs
-  elevenLabsKey: z.string().min(1, 'API key is required'),
-  elevenLabsVoiceId: z.string().min(1, 'Voice ID is required'),
-  elevenLabsAgentId: z.string().min(1, 'Agent ID is required'),
+  elevenLabsKey: z.string().optional(),
+  elevenLabsVoiceId: z.string().optional(),
+  elevenLabsAgentId: z.string().optional(),
   elevenLabsAudioUrl: z.string().url('Invalid URL').optional().or(z.literal('')),
   
   // General
@@ -105,9 +114,18 @@ export function IntegrationSettings() {
   }, [settings, form])
 
   const onSubmit = async (data: IntegrationFormData) => {
+    console.log('Submitting integration settings:', data)
     setIsSubmitting(true)
 
     try {
+      // Log the data being saved
+      console.log('Updating settings with:', {
+        integrations: {
+          ...settings.integrations,
+          ...data,
+        },
+      })
+
       await updateSettings({
         integrations: {
           ...settings.integrations,
@@ -119,11 +137,18 @@ export function IntegrationSettings() {
         title: 'Integrations updated',
         description: 'Your integration settings have been saved and are ready to use.',
       })
+      
+      // Log success
+      console.log('Settings saved successfully')
     } catch (error) {
       console.error('Failed to update integrations:', error)
+      
+      // More detailed error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      
       toast({
         title: 'Update failed',
-        description: 'Failed to save integration settings. Please try again.',
+        description: `Failed to save settings: ${errorMessage}`,
         variant: 'destructive',
       })
     } finally {

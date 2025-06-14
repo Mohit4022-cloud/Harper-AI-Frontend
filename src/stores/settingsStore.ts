@@ -27,29 +27,44 @@ export const useSettingsStore = create<SettingsState>()(
       error: null,
 
       /**
-       * Fetch settings from API
+       * Fetch settings (prioritize localStorage)
        */
       fetchSettings: async () => {
         set({ loading: true, error: null })
         
         try {
-          const response = await fetch('/api/settings')
-          
-          if (!response.ok) {
-            throw new Error('Failed to fetch settings')
+          // First check if we have settings in the current state (from localStorage)
+          const currentSettings = get().settings
+          if (currentSettings && Object.keys(currentSettings.integrations).some(key => currentSettings.integrations[key as keyof typeof currentSettings.integrations])) {
+            // We have settings in localStorage, use those
+            set({ loading: false })
+            return
           }
-          
-          const data = await response.json()
-          
-          if (data.success) {
-            // Validate settings with schema
-            const validatedSettings = UserSettingsSchema.parse(data.data)
-            set({ settings: validatedSettings, loading: false })
-          } else {
-            throw new Error(data.error || 'Failed to fetch settings')
+
+          // Otherwise try to fetch from API
+          try {
+            const response = await fetch('/api/settings')
+            
+            if (!response.ok) {
+              throw new Error('Failed to fetch settings')
+            }
+            
+            const data = await response.json()
+            
+            if (data.success) {
+              // Validate settings with schema
+              const validatedSettings = UserSettingsSchema.parse(data.data)
+              set({ settings: validatedSettings, loading: false })
+            } else {
+              throw new Error(data.error || 'Failed to fetch settings')
+            }
+          } catch (apiError) {
+            // API failed, but that's okay - use default settings
+            console.warn('Failed to fetch settings from API, using defaults:', apiError)
+            set({ loading: false })
           }
         } catch (error) {
-          console.error('Error fetching settings:', error)
+          console.error('Error in fetchSettings:', error)
           set({ 
             error: error instanceof Error ? error.message : 'Failed to fetch settings',
             loading: false 
@@ -58,7 +73,7 @@ export const useSettingsStore = create<SettingsState>()(
       },
 
       /**
-       * Update settings via API
+       * Update settings (client-side only for better persistence)
        */
       updateSettings: async (updates: Partial<UserSettings>) => {
         set({ loading: true, error: null })
@@ -86,24 +101,20 @@ export const useSettingsStore = create<SettingsState>()(
           // Validate updated settings
           const validatedSettings = UserSettingsSchema.parse(updatedSettings)
           
-          const response = await fetch('/api/settings', {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(validatedSettings),
-          })
+          // Save to localStorage immediately
+          set({ settings: validatedSettings, loading: false })
           
-          if (!response.ok) {
-            throw new Error('Failed to update settings')
-          }
-          
-          const data = await response.json()
-          
-          if (data.success) {
-            set({ settings: validatedSettings, loading: false })
-          } else {
-            throw new Error(data.error || 'Failed to update settings')
+          // Optionally try to sync with server (but don't fail if it doesn't work)
+          try {
+            await fetch('/api/settings', {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(validatedSettings),
+            })
+          } catch (apiError) {
+            console.warn('Failed to sync settings with server, but local save succeeded:', apiError)
           }
         } catch (error) {
           console.error('Error updating settings:', error)
@@ -191,8 +202,8 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'user-settings',
-      // Only persist theme preference in localStorage
-      partialize: (state) => ({ theme: state.settings.theme }),
+      // Persist all settings in localStorage
+      partialize: (state) => ({ settings: state.settings }),
     }
   )
 )

@@ -17,20 +17,20 @@ export const UserSettingsSchema = z.object({
   theme: z.enum(['light', 'dark', 'system']),
   integrations: z.object({
     // Twilio Configuration
-    twilioAccountSid: z.string(),
-    twilioAuthToken: z.string(),
-    twilioCallerNumber: z.string(),
-    twilioKey: z.string(), // Keep for backward compatibility
+    twilioAccountSid: z.string().optional().default(''),
+    twilioAuthToken: z.string().optional().default(''),
+    twilioCallerNumber: z.string().optional().default(''),
+    twilioKey: z.string().optional().default(''), // Keep for backward compatibility
     
     // ElevenLabs Configuration
-    elevenLabsKey: z.string(),
-    elevenLabsVoiceId: z.string(),
-    elevenLabsAgentId: z.string(),
-    elevenLabsAudioUrl: z.string().url().optional().or(z.literal('')),
+    elevenLabsKey: z.string().optional().default(''),
+    elevenLabsVoiceId: z.string().optional().default('21m00Tcm4TlvDq8ikWAM'),
+    elevenLabsAgentId: z.string().optional().default(''),
+    elevenLabsAudioUrl: z.string().optional().default(''),
     
     // General Configuration
-    webhookUrl: z.string().url().optional().or(z.literal('')),
-    baseUrl: z.string().url().optional().or(z.literal('')),
+    webhookUrl: z.string().optional().default(''),
+    baseUrl: z.string().optional().default(''),
   }),
 })
 
