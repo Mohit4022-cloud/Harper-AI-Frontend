@@ -92,6 +92,15 @@ async function startRelayProcess(
     TWILIO_PHONE_NUMBER: config.twilioPhoneNumber,
     PORT: port.toString(),
   }
+  
+  // Log Twilio configuration for debugging (mask sensitive parts)
+  logger.info({
+    twilioAccountSid: config.twilioAccountSid ? `${config.twilioAccountSid.substring(0, 6)}...` : 'NOT SET',
+    twilioAuthToken: config.twilioAuthToken ? '[REDACTED]' : 'NOT SET',
+    twilioPhoneNumber: config.twilioPhoneNumber || 'NOT SET',
+    elevenLabsAgentId: config.elevenLabsAgentId || 'NOT SET',
+    port,
+  }, 'relay.config')
 
   return new Promise((resolve, reject) => {
     const relayProcess = spawn('node', ['index.js'], {

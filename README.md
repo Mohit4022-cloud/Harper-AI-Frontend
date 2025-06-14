@@ -55,6 +55,8 @@ A comprehensive, production-ready Sales Development Representative (SDR) platfor
 
 The Harper AI platform integrates with `productiv-ai-relay` for AI-powered voice calling capabilities.
 
+⚠️ **IMPORTANT**: You must configure your Twilio and ElevenLabs credentials before using the calling features. See [TWILIO_SETUP.md](./TWILIO_SETUP.md) for detailed instructions.
+
 #### Required Dependencies
 
 The relay submodule requires the following dependencies in the main project:

@@ -1,163 +1,136 @@
-# Twilio Voice Setup Guide
+# Twilio & ElevenLabs Configuration Guide
 
-This guide will help you set up Twilio Voice for the Harper AI platform.
+## 🚨 Current Issue
 
-## Prerequisites
+The error `accountSid must start with AC` indicates that the Twilio credentials are not properly configured.
 
-- Twilio account (sign up at https://www.twilio.com)
-- Verified phone number in Twilio
-- Node.js environment
+## 🔧 Local Development Setup
 
-## Step 1: Get Twilio Credentials
+### 1. Update `.env.local`
 
-1. Log in to your Twilio Console
-2. Navigate to **Account** → **API keys & tokens**
-3. Note down your:
-   - Account SID (starts with `AC`)
-   - Auth Token
+Replace the placeholder values in `.env.local` with your actual credentials:
 
-## Step 2: Create API Key
+```bash
+# Twilio Configuration (REQUIRED)
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  # Must start with 'AC'
+TWILIO_AUTH_TOKEN=your_actual_auth_token_here          # 32+ characters
+TWILIO_CALLER_NUMBER=+1234567890                       # Your Twilio phone number in E.164 format
 
-1. In Twilio Console, go to **Account** → **API keys & tokens**
-2. Click **Create API Key**
-3. Give it a friendly name (e.g., "Harper AI Voice")
-4. Save the:
-   - API Key SID (starts with `SK`)
-   - API Key Secret (shown only once!)
-
-## Step 3: Create TwiML App
-
-1. Navigate to **Voice** → **TwiML Apps**
-2. Click **Create new TwiML App**
-3. Configure:
-   - **Friendly Name**: Harper AI Voice App
-   - **Voice URL**: `https://your-domain.com/api/twilio/voice`
-   - **Voice Method**: POST
-   - **Status Callback URL**: `https://your-domain.com/api/twilio/status`
-4. Save the TwiML App SID (starts with `AP`)
-
-## Step 4: Get a Phone Number
-
-1. Go to **Phone Numbers** → **Manage** → **Buy a number**
-2. Choose a number with Voice capabilities
-3. Configure the number:
-   - **Voice & Fax** → **Configure With**: TwiML App
-   - **TwiML App**: Select your Harper AI Voice App
-
-## Step 5: Configure Environment Variables
-
-Create or update your `.env.local` file:
-
-```env
-# Twilio Configuration
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_API_KEY=SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_API_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_TWIML_APP_SID=APxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_PHONE_NUMBER=+1234567890
-TWILIO_CALLER_NUMBER=+1234567890
-
-# Enable Twilio
-ENABLE_TWILIO_CALLING=true
+# ElevenLabs Configuration (REQUIRED)
+ELEVENLABS_API_KEY=sk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  # Your actual API key
+ELEVENLABS_AGENT_ID=agent_xxxxxxxxxxxxxxxxxxxxxxxxxx    # Your agent ID
 ```
 
-## Step 6: Configure Webhooks
+### 2. Get Your Twilio Credentials
 
-Update your TwiML App webhooks to point to your deployment:
+1. Log in to [Twilio Console](https://console.twilio.com)
+2. Find your **Account SID** and **Auth Token** on the dashboard
+3. Get a phone number from Twilio (Phone Numbers → Manage → Active Numbers)
 
-### Development (using ngrok)
+### 3. Get Your ElevenLabs Credentials
+
+1. Log in to [ElevenLabs](https://elevenlabs.io)
+2. Go to Profile → API Key
+3. Create or copy your API key
+4. Get your Agent ID from the Conversational AI section
+
+### 4. Test Your Configuration
+
 ```bash
-# Install ngrok
-npm install -g ngrok
+# Run the configuration test
+node scripts/test-twilio-config.js
 
-# Start your dev server
+# If successful, start the dev server
 npm run dev
 
-# In another terminal, expose your local server
-ngrok http 3000
-
-# Use the ngrok URL for webhooks, e.g.:
-# https://abc123.ngrok.io/api/twilio/voice
+# Test the API
+curl -X POST http://localhost:3000/api/call/start \
+  -H "Content-Type: application/json" \
+  -d '{"phone": "+1234567890"}'
 ```
 
-### Production
-Use your actual domain:
-- Voice URL: `https://harper-ai-frontend-1.onrender.com/api/twilio/voice`
-- Status Callback: `https://harper-ai-frontend-1.onrender.com/api/twilio/status`
+## 🚀 Render Deployment Setup
 
-## Step 7: Test Your Setup
+### 1. Set Environment Variables in Render
 
-1. Navigate to the Calling page in Harper AI
-2. Enter a phone number to call
-3. Click the call button
-4. You should hear: "Hello, this is Harper AI connecting your call"
+1. Go to your [Render Dashboard](https://dashboard.render.com)
+2. Select your service: `harper-ai-frontend`
+3. Go to **Environment** tab
+4. Add these environment variables:
 
-## Webhook Endpoints
+```
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_actual_auth_token_here
+TWILIO_CALLER_NUMBER=+1234567890
+ELEVENLABS_API_KEY=sk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+ELEVENLABS_AGENT_ID=agent_xxxxxxxxxxxxxxxxxxxxxxxxxx
+```
 
-Harper AI provides the following Twilio webhook endpoints:
+### 2. Verify Deployment
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/api/twilio/voice` | POST | TwiML generation for calls |
-| `/api/twilio/status` | POST | Call status updates |
-| `/api/twilio/recording` | POST | Recording completion notifications |
-| `/api/twilio/transcription` | POST | Transcription results |
+After setting the environment variables:
 
-## Development Mode
+1. **Redeploy** your service (Manual Deploy → Deploy)
+2. Check the **Logs** tab for any startup errors
+3. Test the API endpoint:
 
-In development mode (when `NODE_ENV=development` and no Twilio credentials):
-- The system uses mock credentials
-- Calls won't actually connect
-- Perfect for UI development and testing
+```bash
+curl -X POST https://harper-ai-frontend-2.onrender.com/api/call/start \
+  -H "Content-Type: application/json" \
+  -d '{"phone": "+1234567890"}'
+```
 
-## Security Best Practices
+## 📋 Configuration Flow
 
-1. **Never commit credentials** - Use environment variables
-2. **Validate webhooks** - Verify requests are from Twilio
-3. **Use HTTPS** - Always use secure connections
-4. **Rotate credentials** - Regularly update API keys
-5. **Limit permissions** - Use minimal required permissions
+```
+HarperAI (.env.local or Render env vars)
+    ↓
+/api/call/start (reads env vars)
+    ↓
+callRelayService.start() (passes config)
+    ↓
+relayBootstrap (sets env for subprocess)
+    ↓
+productiv-ai-relay/index.js (uses env vars)
+```
 
-## Troubleshooting
+## 🐛 Troubleshooting
 
-### "Twilio Device not initialized"
-- Check that all environment variables are set
-- Verify API credentials are correct
-- Check browser console for errors
+### "accountSid must start with AC"
+- Your `TWILIO_ACCOUNT_SID` is missing or invalid
+- Check it starts with 'AC' followed by 32 hex characters
+- Verify no quotes or spaces in the value
 
-### "Invalid or expired token"
-- Tokens expire after 1 hour
-- Refresh the page to get a new token
-- Check JWT_SECRET is configured
+### "Failed to start relay"
+- Check all 5 required environment variables are set
+- Run `node scripts/test-twilio-config.js` to verify
+- Check Render logs for detailed error messages
 
-### Calls not connecting
-- Verify phone number format (+1234567890)
-- Check TwiML App configuration
-- Ensure webhooks are accessible
-- Check Twilio account balance
+### Settings UI Not Working?
+- The Settings UI stores credentials in browser localStorage
+- For production, use Render environment variables instead
+- Environment variables take precedence over UI settings
 
-### No audio
-- Check browser microphone permissions
-- Verify codec preferences (opus, pcmu)
-- Test with different browsers
+## ✅ Success Indicators
 
-## Cost Considerations
+When properly configured, you should see:
 
-Twilio charges for:
-- Phone numbers (~$1/month)
-- Outbound calls (~$0.013/minute)
-- Recording storage (~$0.0025/minute)
-- Transcription (~$0.05/minute)
+1. **In logs**:
+   ```
+   relay.config {
+     twilioAccountSid: "ACxxxx...",
+     twilioAuthToken: "[REDACTED]",
+     twilioPhoneNumber: "+1234567890",
+     elevenLabsAgentId: "agent_xxx",
+     port: 8000
+   }
+   ```
 
-Monitor usage in Twilio Console → **Monitor** → **Usage**
-
-## Next Steps
-
-1. Set up call recording storage (AWS S3 recommended)
-2. Implement real-time transcription
-3. Add call analytics and reporting
-4. Configure international calling
-5. Set up SMS capabilities
-
-For more information, see the [Twilio Voice documentation](https://www.twilio.com/docs/voice).
+2. **API response**:
+   ```json
+   {
+     "success": true,
+     "callSid": "CAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "status": "initiated"
+   }
+   ```

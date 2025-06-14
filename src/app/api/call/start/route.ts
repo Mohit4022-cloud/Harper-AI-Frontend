@@ -55,6 +55,33 @@ export async function POST(req: NextRequest) {
     const twilioNumber = settings?.twilioCallerNumber || process.env.TWILIO_CALLER_NUMBER
     const elevenLabsKey = settings?.elevenLabsKey || process.env.ELEVENLABS_API_KEY
     const elevenLabsAgentId = settings?.elevenLabsAgentId || process.env.ELEVENLABS_AGENT_ID
+    
+    // Debug log configuration sources
+    logger.info({
+      requestId,
+      configSource: {
+        twilioAccountSid: {
+          fromSettings: !!settings?.twilioAccountSid,
+          fromEnv: !!process.env.TWILIO_ACCOUNT_SID,
+          value: accountSid ? `${accountSid.substring(0, 6)}...` : 'NOT SET',
+        },
+        twilioAuthToken: {
+          fromSettings: !!settings?.twilioAuthToken,
+          fromEnv: !!process.env.TWILIO_AUTH_TOKEN,
+          isSet: !!authToken,
+        },
+        twilioPhoneNumber: {
+          fromSettings: !!settings?.twilioCallerNumber,
+          fromEnv: !!process.env.TWILIO_CALLER_NUMBER,
+          value: twilioNumber || 'NOT SET',
+        },
+        elevenLabsAgentId: {
+          fromSettings: !!settings?.elevenLabsAgentId,
+          fromEnv: !!process.env.ELEVENLABS_AGENT_ID,
+          value: elevenLabsAgentId || 'NOT SET',
+        },
+      },
+    }, 'call.start.config_debug')
 
     // Check for missing configuration
     const missingConfig = []
