@@ -1,16 +1,15 @@
-import type { NextConfig } from 'next'
-import bundleAnalyzer from '@next/bundle-analyzer'
+const bundleAnalyzer = require('@next/bundle-analyzer')
 
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 })
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@tanstack/react-query', '@tanstack/react-virtual'],
   images: {
     formats: ['image/avif', 'image/webp'],
-    domains: process.env.NEXT_PUBLIC_IMAGE_DOMAINS?.split(',') || [],
+    domains: process.env.NEXT_PUBLIC_IMAGE_DOMAINS ? process.env.NEXT_PUBLIC_IMAGE_DOMAINS.split(',') : [],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     remotePatterns: [
@@ -72,4 +71,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default withBundleAnalyzer(nextConfig)
+module.exports = withBundleAnalyzer(nextConfig)
