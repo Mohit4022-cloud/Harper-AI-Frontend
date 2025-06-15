@@ -282,7 +282,7 @@ async function main() {
 }
 
 function getActivityTitle(type: string): string {
-  const titles = {
+  const titles: Record<string, string> = {
     CALL_PLACED: 'Outbound call placed',
     CALL_RECEIVED: 'Inbound call received',
     EMAIL_SENT: 'Email sent',
