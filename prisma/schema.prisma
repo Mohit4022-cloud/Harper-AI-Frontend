@@ -1,0 +1,443 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["metrics", "tracing", "fullTextSearch", "fullTextIndex"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// User and Authentication
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String?
+  role          UserRole  @default(USER)
+  status        UserStatus @default(ACTIVE)
+  avatar        String?
+  
+  // OAuth
+  provider      String?
+  providerId    String?
+  
+  // Metadata
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  teams         TeamMember[]
+  ownedTeams    Team[]
+  calls         Call[]
+  activities    Activity[]
+  
+  @@index([email])
+  @@index([status])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+}
+
+// Teams and Organizations
+model Team {
+  id            String    @id @default(cuid())
+  name          String
+  slug          String    @unique
+  logo          String?
+  ownerId       String
+  
+  // Settings
+  settings      Json      @default("{}")
+  features      String[]  @default([])
+  
+  // Billing
+  plan          TeamPlan  @default(FREE)
+  billingCycle  BillingCycle @default(MONTHLY)
+  stripeCustomerId String? @unique
+  stripeSubscriptionId String? @unique
+  
+  // Metadata
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  owner         User      @relation(fields: [ownerId], references: [id])
+  members       TeamMember[]
+  contacts      Contact[]
+  campaigns     Campaign[]
+  webhooks      Webhook[]
+  apiKeys       ApiKey[]
+  
+  @@index([slug])
+  @@index([ownerId])
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  userId    String
+  role      TeamRole @default(MEMBER)
+  joinedAt  DateTime @default(now())
+  
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+}
+
+// Contacts
+model Contact {
+  id            String    @id @default(cuid())
+  teamId        String
+  
+  // Basic Info
+  firstName     String
+  lastName      String
+  email         String?
+  phone         String?
+  company       String?
+  jobTitle      String?
+  
+  // Contact Details
+  address       Json?
+  socialProfiles Json?
+  
+  // Metadata
+  status        ContactStatus @default(ACTIVE)
+  source        String?
+  score         Int           @default(0)
+  tags          String[]      @default([])
+  customFields  Json          @default("{}")
+  
+  // Timestamps
+  lastContactAt DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  // Relations
+  team          Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  calls         Call[]
+  activities    Activity[]
+  campaignContacts CampaignContact[]
+  
+  @@unique([teamId, email])
+  @@unique([teamId, phone])
+  @@index([teamId])
+  @@index([status])
+  @@index([score])
+  @@index([createdAt])
+}
+
+// Calls
+model Call {
+  id            String    @id @default(cuid())
+  teamId        String
+  contactId     String?
+  userId        String
+  
+  // Call Details
+  type          CallType
+  direction     CallDirection
+  status        CallStatus
+  duration      Int?      // in seconds
+  
+  // Phone Numbers
+  from          String
+  to            String
+  
+  // Recording
+  recordingUrl  String?
+  recordingDuration Int?
+  
+  // Transcript
+  transcript    Json?
+  summary       Json?
+  sentiment     String?
+  
+  // Metadata
+  startedAt     DateTime
+  endedAt       DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  contact       Contact?  @relation(fields: [contactId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
+  
+  @@index([teamId])
+  @@index([contactId])
+  @@index([userId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+// Campaigns
+model Campaign {
+  id            String    @id @default(cuid())
+  teamId        String
+  
+  // Campaign Info
+  name          String
+  description   String?
+  type          CampaignType
+  status        CampaignStatus @default(DRAFT)
+  
+  // Settings
+  settings      Json      @default("{}")
+  schedule      Json?
+  
+  // Performance
+  metrics       Json      @default("{}")
+  
+  // Timestamps
+  startDate     DateTime?
+  endDate       DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  team          Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  contacts      CampaignContact[]
+  
+  @@index([teamId])
+  @@index([status])
+}
+
+model CampaignContact {
+  id            String    @id @default(cuid())
+  campaignId    String
+  contactId     String
+  
+  // Status
+  status        CampaignContactStatus @default(PENDING)
+  attempts      Int       @default(0)
+  lastAttemptAt DateTime?
+  
+  // Results
+  result        Json?
+  
+  // Timestamps
+  addedAt       DateTime  @default(now())
+  completedAt   DateTime?
+  
+  // Relations
+  campaign      Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact       Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  
+  @@unique([campaignId, contactId])
+  @@index([campaignId])
+  @@index([contactId])
+  @@index([status])
+}
+
+// Activities
+model Activity {
+  id            String    @id @default(cuid())
+  teamId        String
+  contactId     String?
+  userId        String
+  
+  // Activity Info
+  type          ActivityType
+  title         String
+  description   String?
+  metadata      Json?
+  
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  
+  // Relations
+  contact       Contact?  @relation(fields: [contactId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
+  
+  @@index([teamId])
+  @@index([contactId])
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// Webhooks
+model Webhook {
+  id            String    @id @default(cuid())
+  teamId        String
+  
+  // Webhook Config
+  url           String
+  events        String[]
+  secret        String
+  active        Boolean   @default(true)
+  
+  // Metadata
+  description   String?
+  lastTriggeredAt DateTime?
+  failureCount  Int       @default(0)
+  
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  team          Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  @@index([teamId])
+  @@index([active])
+}
+
+// API Keys
+model ApiKey {
+  id            String    @id @default(cuid())
+  teamId        String
+  
+  // Key Info
+  name          String
+  key           String    @unique
+  permissions   String[]  @default([])
+  
+  // Usage
+  lastUsedAt    DateTime?
+  usageCount    Int       @default(0)
+  
+  // Expiry
+  expiresAt     DateTime?
+  revokedAt     DateTime?
+  
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  
+  // Relations
+  team          Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  @@index([teamId])
+  @@index([key])
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum TeamPlan {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum ContactStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum CallType {
+  VOICE
+  VIDEO
+}
+
+enum CallDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum CallStatus {
+  INITIATED
+  RINGING
+  CONNECTED
+  COMPLETED
+  FAILED
+  MISSED
+  VOICEMAIL
+}
+
+enum CampaignType {
+  CALLING
+  SMS
+  EMAIL
+  MULTI_CHANNEL
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum CampaignContactStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+enum ActivityType {
+  CALL_PLACED
+  CALL_RECEIVED
+  EMAIL_SENT
+  EMAIL_RECEIVED
+  NOTE_ADDED
+  CONTACT_CREATED
+  CONTACT_UPDATED
+  CAMPAIGN_ENROLLED
+  CAMPAIGN_COMPLETED
+}

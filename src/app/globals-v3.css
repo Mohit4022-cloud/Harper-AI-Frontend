@@ -1,0 +1,237 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Background colors */
+    --background-primary: 0 0% 100%;
+    --background-secondary: 240 5% 96%;
+    --background-tertiary: 240 5% 94%;
+    --background-accent: 240 5% 92%;
+    --background-muted: 240 5% 98%;
+    
+    /* Foreground colors */
+    --foreground-primary: 240 10% 4%;
+    --foreground-secondary: 240 6% 25%;
+    --foreground-muted: 240 4% 46%;
+    --foreground-accent: 240 6% 10%;
+    
+    /* Accent colors */
+    --accent-primary: 240 6% 10%;
+    --accent-secondary: 240 5% 64%;
+    --accent-success: 142 71% 45%;
+    --accent-warning: 38 92% 50%;
+    --accent-error: 0 84% 60%;
+    --accent-info: 206 90% 54%;
+    
+    /* Border colors */
+    --border-primary: 240 6% 90%;
+    --border-secondary: 240 6% 85%;
+    --border-accent: 240 6% 80%;
+    
+    /* Shadcn/ui compatibility */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 4%;
+    --primary: 240 6% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 6% 10%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 240 5% 96%;
+    --accent-foreground: 240 6% 10%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 240 6% 10%;
+    --radius: 0.5rem;
+  }
+  
+  .dark {
+    /* Background colors */
+    --background-primary: 240 10% 4%;
+    --background-secondary: 240 10% 8%;
+    --background-tertiary: 240 10% 12%;
+    --background-accent: 240 10% 16%;
+    --background-muted: 240 10% 6%;
+    
+    /* Foreground colors */
+    --foreground-primary: 0 0% 98%;
+    --foreground-secondary: 0 0% 75%;
+    --foreground-muted: 240 5% 64%;
+    --foreground-accent: 0 0% 98%;
+    
+    /* Accent colors */
+    --accent-primary: 0 0% 98%;
+    --accent-secondary: 240 4% 46%;
+    --accent-success: 142 71% 45%;
+    --accent-warning: 38 92% 50%;
+    --accent-error: 0 84% 60%;
+    --accent-info: 206 90% 54%;
+    
+    /* Border colors */
+    --border-primary: 240 4% 16%;
+    --border-secondary: 240 4% 20%;
+    --border-accent: 240 4% 24%;
+    
+    /* Shadcn/ui compatibility */
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 4%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 4%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 6% 10%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 5% 64%;
+    --accent: 240 4% 16%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 240 5% 84%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-background-secondary;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border-primary rounded-md;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-border-secondary;
+  }
+  
+  /* Focus visible */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+  
+  /* Selection */
+  ::selection {
+    @apply bg-accent-primary/20 text-foreground-primary;
+  }
+}
+
+/* Utility classes for design tokens */
+@layer utilities {
+  /* Typography utilities */
+  .text-display-lg {
+    @apply text-5xl font-bold leading-tight tracking-tight;
+  }
+  
+  .text-display-md {
+    @apply text-4xl font-bold leading-tight tracking-tight;
+  }
+  
+  .text-display-sm {
+    @apply text-3xl font-semibold leading-snug;
+  }
+  
+  .text-heading-lg {
+    @apply text-2xl font-semibold leading-snug;
+  }
+  
+  .text-heading-md {
+    @apply text-xl font-semibold leading-normal;
+  }
+  
+  .text-heading-sm {
+    @apply text-lg font-medium leading-normal;
+  }
+  
+  .text-body-lg {
+    @apply text-lg leading-relaxed;
+  }
+  
+  .text-body-md {
+    @apply text-base leading-normal;
+  }
+  
+  .text-body-sm {
+    @apply text-sm leading-normal;
+  }
+  
+  .text-caption {
+    @apply text-xs leading-normal;
+  }
+  
+  /* Animation utilities */
+  .animate-in {
+    animation-duration: var(--animation-duration, 200ms);
+    animation-timing-function: var(--animation-easing, cubic-bezier(0.4, 0, 0.2, 1));
+    animation-fill-mode: both;
+  }
+  
+  .fade-in {
+    --animation-name: fadeIn;
+  }
+  
+  .slide-in {
+    --animation-name: slideIn;
+  }
+  
+  .scale-in {
+    --animation-name: scaleIn;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideIn {
+    from {
+      transform: translateY(10px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes scaleIn {
+    from {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+}
