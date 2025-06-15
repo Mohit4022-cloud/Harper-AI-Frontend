@@ -8,6 +8,8 @@
     "dev:debug": "DEBUG=\"next:*\" npm run dev",
     "build": "next build",
     "start": "next start",
+    "start:production": "./start-production.sh",
+    "start:render": "./render-start.sh",
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",

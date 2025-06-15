@@ -8,7 +8,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
-import { getCallContext } from '@/services/callRelayDirect';
+import { getCallContext, isInitialized } from '@/services/callRelayDirect';
+import axios from 'axios';
 
 export async function POST(request: NextRequest) {
   const requestId = request.headers.get('x-request-id') || Math.random().toString(36).substr(2, 9);
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
     const context = getCallContext(reqId);
     
     // Generate TwiML response with WebSocket stream
-    const twiml = generateStreamingTwiML(request, reqId);
+    const twiml = await generateStreamingTwiML(request, reqId);
 
     return new NextResponse(twiml, {
       status: 200,
@@ -64,9 +65,54 @@ export async function POST(request: NextRequest) {
 }
 
 /**
+ * Create ElevenLabs phone call configuration
+ */
+async function createElevenLabsPhoneCall(reqId: string, callSid: string): Promise<string | null> {
+  try {
+    const agentId = process.env.ELEVENLABS_AGENT_ID;
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+    
+    if (!agentId || !apiKey) {
+      logger.error('Missing ElevenLabs configuration');
+      return null;
+    }
+    
+    // Get call context
+    const context = getCallContext(reqId);
+    
+    // Create a phone call with ElevenLabs
+    const response = await axios.post(
+      `https://api.elevenlabs.io/v1/convai/conversations/phone_call`,
+      {
+        agent_id: agentId,
+        first_message: context?.script || "Hello! I'm calling from Harper AI. How can I help you today?",
+        webhook_url: `${process.env.BASE_URL || process.env.NEXT_PUBLIC_API_URL}/api/elevenlabs/webhook`,
+        custom_data: {
+          callSid,
+          reqId,
+          persona: context?.persona,
+          context: context?.context
+        }
+      },
+      {
+        headers: {
+          'xi-api-key': apiKey,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    
+    return response.data.phone_number;
+  } catch (error: any) {
+    logger.error({ error: error?.response?.data || error }, 'Failed to create ElevenLabs phone call');
+    return null;
+  }
+}
+
+/**
  * Generate TwiML for streaming to ElevenLabs
  */
-function generateStreamingTwiML(request: NextRequest, reqId: string): string {
+async function generateStreamingTwiML(request: NextRequest, reqId: string): Promise<string> {
   const host = request.headers.get('host') || 'localhost';
   const isLocal = /localhost|127\.0\.0\.1/.test(host);
   
@@ -80,6 +126,7 @@ function generateStreamingTwiML(request: NextRequest, reqId: string): string {
     context: context.context || 'NO_CONTEXT',
     elevenLabsAgentId: process.env.ELEVENLABS_AGENT_ID || 'NOT_SET',
     elevenLabsApiKey: process.env.ELEVENLABS_API_KEY ? 'SET' : 'NOT_SET',
+    isInitialized: isInitialized()
   }, 'twilio.voice.twiml.generating');
 
   // Check if we should use the relay subprocess (local development)
@@ -108,26 +155,43 @@ function generateStreamingTwiML(request: NextRequest, reqId: string): string {
     return twiml;
   }
   
-  // For production/Render, use a simpler approach
-  const baseUrl = isLocal ? `http://${host}` : `https://${host}`;
-  const testAudioUrl = `${baseUrl}/api/elevenlabs/test-audio?reqId=${reqId}`;
+  // For production, check if ElevenLabs is configured
+  const elevenLabsConfigured = process.env.ELEVENLABS_AGENT_ID && process.env.ELEVENLABS_API_KEY;
   
-  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+  if (!elevenLabsConfigured) {
+    // Fallback if ElevenLabs is not configured
+    logger.warn({ reqId }, 'twilio.voice.elevenlabs_not_configured');
+    
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say>Connecting you to the AI assistant.</Say>
-  <Play>${testAudioUrl}</Play>
-  <Say>Real-time conversation requires WebSocket streaming. This is a test of the audio pipeline.</Say>
+  <Say>I'm sorry, but the AI assistant is not properly configured. Please contact support.</Say>
   <Pause length="2"/>
   <Say>Thank you for calling. Goodbye.</Say>
   <Hangup/>
 </Response>`;
 
+    return twiml;
+  }
+  
+  // For now, use a simple fallback until WebSocket support is added
   logger.info({
     reqId,
-    twiml: twiml.replace(/\n/g, ' ').substring(0, 200) + '...',
-    useRelay: false
-  }, 'twilio.voice.twiml.generated');
-
+    context,
+    elevenLabsConfigured: true,
+    note: 'WebSocket streaming requires separate relay service'
+  }, 'twilio.voice.using_fallback');
+  
+  // Provide a helpful response explaining the limitation
+  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say>Thank you for calling Harper AI. Our AI assistant requires advanced streaming capabilities that are currently being configured.</Say>
+  <Pause length="1"/>
+  <Say>Please contact our support team for assistance, or try again later.</Say>
+  <Pause length="2"/>
+  <Say>Thank you for your patience. Goodbye.</Say>
+  <Hangup/>
+</Response>`;
+  
   return twiml;
 }
 

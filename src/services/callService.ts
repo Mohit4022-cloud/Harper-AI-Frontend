@@ -8,7 +8,9 @@ import * as callRelayDirect from './callRelayDirect'
 import { callRelayService } from './callRelayService'
 
 // Determine which implementation to use based on environment
-const USE_DIRECT_IMPLEMENTATION = process.env.NODE_ENV === 'production' || process.env.USE_DIRECT_RELAY === 'true'
+// Note: Direct implementation requires WebSocket support which Next.js App Router doesn't provide
+// For production, we need to use the HTTP relay service
+const USE_DIRECT_IMPLEMENTATION = process.env.USE_DIRECT_RELAY === 'true'
 
 export interface CallServiceConfig {
   elevenLabsAgentId: string
@@ -44,11 +46,15 @@ class UnifiedCallService {
    */
   async initialize(config: CallServiceConfig): Promise<void> {
     if (USE_DIRECT_IMPLEMENTATION) {
-      logger.info('Initializing direct call implementation for production')
+      logger.info('Initializing direct call implementation')
       await callRelayDirect.initializeRelay(config)
     } else {
-      logger.info('Using HTTP relay implementation for development')
-      // HTTP relay doesn't need initialization
+      logger.info('Using HTTP relay implementation')
+      // HTTP relay doesn't need initialization but we should check if it's available
+      const isHealthy = await callRelayService.health()
+      if (!isHealthy) {
+        logger.warn('HTTP relay service is not available. Calls may fail.')
+      }
     }
     
     this.config = config

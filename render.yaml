@@ -4,7 +4,7 @@ services:
     env: node
     plan: free
     buildCommand: git submodule update --init --recursive && npm ci && cd src/lib/productiv-ai-relay && npm ci && cd ../../.. && npx prisma generate && npm run build
-    startCommand: npm start
+    startCommand: ./render-start.sh
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -19,6 +19,8 @@ services:
         generateValue: true
       - key: NEXT_PUBLIC_APP_VERSION
         value: "1.1.0"
+      - key: BASE_URL
+        value: https://harper-ai-frontend-2.onrender.com
     autoDeploy: true
     branch: main
     rootDir: .
