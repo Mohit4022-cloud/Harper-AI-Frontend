@@ -112,8 +112,8 @@ async function main() {
           country: faker.location.country(),
         },
         socialProfiles: {
-          linkedin: faker.helpers.maybe(() => `https://linkedin.com/in/${faker.internet.userName()}`, { probability: 0.7 }),
-          twitter: faker.helpers.maybe(() => `https://twitter.com/${faker.internet.userName()}`, { probability: 0.3 }),
+          linkedin: faker.helpers.maybe(() => `https://linkedin.com/in/${faker.internet.userName()}`, { probability: 0.7 }) ?? null,
+          twitter: faker.helpers.maybe(() => `https://twitter.com/${faker.internet.userName()}`, { probability: 0.3 }) ?? null,
         },
         customFields: {
           industry: faker.company.buzzNoun(),
@@ -150,7 +150,7 @@ async function main() {
         duration,
         from: faker.helpers.arrayElement([faker.phone.number(), '+1-800-HARPER']),
         to: faker.helpers.arrayElement([contact.phone || faker.phone.number(), '+1-800-HARPER']),
-        recordingUrl: faker.helpers.maybe(() => faker.internet.url(), { probability: 0.8 }),
+        recordingUrl: faker.helpers.maybe(() => faker.internet.url(), { probability: 0.8 }) ?? null,
         recordingDuration: duration,
         sentiment: faker.helpers.arrayElement(sentiments),
         summary: {
@@ -218,7 +218,7 @@ async function main() {
           contactId: contact.id,
           status: faker.helpers.arrayElement(['PENDING', 'COMPLETED', 'FAILED', 'SKIPPED']),
           attempts: faker.number.int({ min: 0, max: 3 }),
-          lastAttemptAt: faker.helpers.maybe(() => faker.date.recent({ days: 7 }), { probability: 0.7 }),
+          lastAttemptAt: faker.helpers.maybe(() => faker.date.recent({ days: 7 }), { probability: 0.7 }) ?? null,
         },
       })
     }
