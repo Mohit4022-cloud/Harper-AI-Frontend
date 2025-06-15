@@ -15,7 +15,7 @@ if (SENTRY_DSN) {
   replaysOnErrorSampleRate: 1.0,
   
   // Release tracking
-  release: process.env.NEXT_PUBLIC_APP_VERSION,
+  release: process.env.NEXT_PUBLIC_APP_VERSION || 'unknown',
   environment: process.env.NODE_ENV,
   
   // Integrations
@@ -86,7 +86,7 @@ if (SENTRY_DSN) {
       event.contexts = {
         ...event.contexts,
         app: {
-          version: process.env.NEXT_PUBLIC_APP_VERSION,
+          version: process.env.NEXT_PUBLIC_APP_VERSION || 'unknown',
           feature_flags: getFeatureFlags(),
         },
       }
