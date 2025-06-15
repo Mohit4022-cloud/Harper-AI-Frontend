@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { callRelayService } from '@/services/callRelayService'
+import { callService } from '@/services/callService'
 import { logger } from '@/lib/logger'
 
 export async function POST(req: NextRequest) {
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Terminate the call
-    await callRelayService.terminateCall(callSid)
+    await callService.terminateCall(callSid)
     
     return NextResponse.json({
       success: true,

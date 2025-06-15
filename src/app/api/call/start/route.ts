@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { callRelayService } from '@/services/callRelayService'
+import { callService } from '@/services/callService'
 import { createRequestLogger } from '@/lib/logger'
 import { validateE164 } from '@/lib/utils'
 
@@ -93,10 +93,22 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Use the singleton relay service
-    logger.info({ requestId }, 'call.start.using_singleton_relay')
+    // Initialize service if needed (for production)
+    if (process.env.NODE_ENV === 'production') {
+      await callService.initialize({
+        elevenLabsAgentId,
+        elevenLabsApiKey: elevenLabsKey,
+        twilioAccountSid: accountSid,
+        twilioAuthToken: authToken,
+        twilioPhoneNumber: twilioNumber,
+        baseUrl: process.env.BASE_URL || process.env.NEXT_PUBLIC_API_URL
+      })
+    }
     
-    const result = await callRelayService.startAutoDial({
+    // Use the unified call service
+    logger.info({ requestId }, 'call.start.using_unified_service')
+    
+    const result = await callService.startCall({
       to: phone,
       from: twilioNumber,
       script: clientSettings?.script || "You are a helpful AI assistant for Harper AI. Be friendly and professional.",
