@@ -53,3 +53,9 @@ export function debounce<T extends (...args: any[]) => any>(
 export function generateId(): string {
   return Math.random().toString(36).substring(2) + Date.now().toString(36)
 }
+
+export function validateE164(phone: string): boolean {
+  // E.164 format: + followed by 1-15 digits
+  const e164Regex = /^\+[1-9]\d{1,14}$/
+  return e164Regex.test(phone)
+}

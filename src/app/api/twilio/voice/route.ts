@@ -85,7 +85,7 @@ function generateStreamingTwiML(request: NextRequest, reqId: string): string {
   // Check if we should use the relay subprocess (local development)
   const useRelay = process.env.USE_RELAY_SUBPROCESS === 'true';
   
-  if (useRelay && isLocal) {
+  if (useRelay) {
     // Use the original relay subprocess approach for local development
     const relayPort = process.env.RELAY_PORT || '8000';
     const streamUrl = `ws://localhost:${relayPort}/media-stream?reqId=${reqId}`;
@@ -93,7 +93,8 @@ function generateStreamingTwiML(request: NextRequest, reqId: string): string {
     logger.info({
       reqId,
       streamUrl,
-      useRelay: true
+      useRelay: true,
+      context: context
     }, 'twilio.voice.using_relay_subprocess');
     
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>

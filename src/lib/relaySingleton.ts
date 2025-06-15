@@ -1,0 +1,290 @@
+/**
+ * Relay Singleton Bootstrap Module
+ * Manages a single long-lived relay process for production-grade reliability
+ */
+
+import { spawn, ChildProcess } from 'child_process'
+import path from 'path'
+import axios from 'axios'
+import { logger } from './logger'
+
+// Singleton state
+let relayProcess: ChildProcess | null = null
+let isShuttingDown = false
+let restartCount = 0
+const MAX_RESTART_ATTEMPTS = 3
+
+// Configuration
+const RELAY_PORT = process.env.RELAY_PORT || '8000'
+const RELAY_HEALTH_URL = `http://localhost:${RELAY_PORT}/health`
+const RELAY_STARTUP_TIMEOUT = 30000 // 30 seconds
+const HEALTH_CHECK_INTERVAL = 1000 // 1 second
+const HEALTH_CHECK_RETRIES = 5
+
+/**
+ * Check if relay is healthy
+ */
+async function isRelayHealthy(): Promise<boolean> {
+  try {
+    const response = await axios.get(RELAY_HEALTH_URL, { 
+      timeout: 2000,
+      validateStatus: (status) => status === 200 
+    })
+    return response.data.status === 'healthy' || response.data.status === 'ok'
+  } catch (error) {
+    return false
+  }
+}
+
+/**
+ * Wait for relay to become healthy
+ */
+async function waitForRelayHealth(timeoutMs: number = RELAY_STARTUP_TIMEOUT): Promise<boolean> {
+  const startTime = Date.now()
+  
+  while (Date.now() - startTime < timeoutMs) {
+    if (await isRelayHealthy()) {
+      return true
+    }
+    await new Promise(resolve => setTimeout(resolve, HEALTH_CHECK_INTERVAL))
+  }
+  
+  return false
+}
+
+/**
+ * Spawn the relay process
+ */
+async function spawnRelay(): Promise<ChildProcess> {
+  const relayPath = path.join(process.cwd(), 'src/lib/productiv-ai-relay')
+  
+  logger.info('[RelayBootstrap] Spawning new relay process', {
+    path: relayPath,
+    port: RELAY_PORT
+  })
+
+  // Set up environment variables
+  const env = {
+    ...process.env,
+    PORT: RELAY_PORT,
+    NODE_ENV: process.env.NODE_ENV || 'development'
+  }
+
+  // Spawn the process
+  const child = spawn('node', ['index.js'], {
+    cwd: relayPath,
+    env,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    detached: false
+  })
+
+  // Handle stdout
+  child.stdout?.on('data', (data) => {
+    const message = data.toString().trim()
+    if (message) {
+      logger.info(`[Relay] ${message}`)
+    }
+  })
+
+  // Handle stderr
+  child.stderr?.on('data', (data) => {
+    const message = data.toString().trim()
+    if (message) {
+      logger.error(`[Relay Error] ${message}`)
+    }
+  })
+
+  // Handle process exit
+  child.on('exit', (code, signal) => {
+    logger.warn('[RelayBootstrap] Relay process exited', { 
+      code, 
+      signal, 
+      pid: child.pid,
+      restartCount 
+    })
+    
+    relayProcess = null
+    
+    // Auto-restart if not shutting down and under restart limit
+    if (!isShuttingDown && restartCount < MAX_RESTART_ATTEMPTS) {
+      restartCount++
+      logger.info('[RelayBootstrap] Attempting to restart relay', { 
+        attempt: restartCount,
+        maxAttempts: MAX_RESTART_ATTEMPTS 
+      })
+      
+      setTimeout(() => {
+        ensureRelayIsRunning().catch(err => {
+          logger.error('[RelayBootstrap] Failed to restart relay', err)
+        })
+      }, 1000 * restartCount) // Exponential backoff
+    }
+  })
+
+  // Handle spawn errors
+  child.on('error', (error) => {
+    logger.error('[RelayBootstrap] Failed to spawn relay process', error)
+  })
+
+  logger.info('[RelayBootstrap] Spawned new relay', { 
+    pid: child.pid,
+    port: RELAY_PORT 
+  })
+  
+  return child
+}
+
+/**
+ * Ensure the relay is running (singleton pattern)
+ */
+export async function ensureRelayIsRunning(): Promise<void> {
+  // If we already have a process, check if it's still alive
+  if (relayProcess && !relayProcess.killed) {
+    // Verify it's actually responding
+    if (await isRelayHealthy()) {
+      logger.debug('[RelayBootstrap] Existing relay is healthy')
+      return
+    } else {
+      logger.warn('[RelayBootstrap] Existing relay process not responding, will restart')
+      killRelay()
+    }
+  }
+
+  // Check if another instance is already running (from previous run)
+  if (await isRelayHealthy()) {
+    logger.info(`[RelayBootstrap] Existing relay detected, reusing on port ${RELAY_PORT}`)
+    return
+  }
+
+  // Try to spawn a new relay
+  let attempts = 0
+  const maxAttempts = 3
+  
+  while (attempts < maxAttempts) {
+    attempts++
+    
+    try {
+      relayProcess = await spawnRelay()
+      
+      // Wait for it to become healthy
+      const isHealthy = await waitForRelayHealth()
+      
+      if (isHealthy) {
+        logger.info('[RelayBootstrap] Relay is ready', { 
+          port: RELAY_PORT,
+          pid: relayProcess.pid 
+        })
+        return
+      } else {
+        throw new Error('Relay failed health check after startup')
+      }
+      
+    } catch (error: any) {
+      logger.error('[RelayBootstrap] Failed to start relay', {
+        attempt: attempts,
+        maxAttempts,
+        error: error.message
+      })
+      
+      // Kill the process if it exists
+      if (relayProcess) {
+        killRelay()
+      }
+      
+      // Check for specific errors
+      if (error.message?.includes('EADDRINUSE')) {
+        logger.info('[RelayBootstrap] Port already in use, checking if it\'s a healthy relay')
+        
+        // Give it a moment for the existing process to fully start
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        
+        if (await isRelayHealthy()) {
+          logger.info('[RelayBootstrap] Found healthy relay on port, reusing it')
+          return
+        }
+      }
+      
+      // If not the last attempt, wait before retrying
+      if (attempts < maxAttempts) {
+        const backoffMs = Math.min(1000 * Math.pow(2, attempts - 1), 10000)
+        logger.info(`[RelayBootstrap] Waiting ${backoffMs}ms before retry`)
+        await new Promise(resolve => setTimeout(resolve, backoffMs))
+      }
+    }
+  }
+  
+  throw new Error(`Failed to start relay after ${maxAttempts} attempts`)
+}
+
+/**
+ * Kill the relay process
+ */
+function killRelay(): void {
+  if (relayProcess && !relayProcess.killed) {
+    logger.info('[RelayBootstrap] Killing relay process', { pid: relayProcess.pid })
+    relayProcess.kill('SIGTERM')
+    relayProcess = null
+  }
+}
+
+/**
+ * Graceful shutdown handler
+ */
+export async function shutdownRelay(): Promise<void> {
+  isShuttingDown = true
+  killRelay()
+  
+  // Give it a moment to clean up
+  await new Promise(resolve => setTimeout(resolve, 1000))
+}
+
+/**
+ * Get relay status
+ */
+export async function getRelayStatus(): Promise<{
+  running: boolean
+  healthy: boolean
+  port: string
+  pid?: number
+  restartCount: number
+}> {
+  const running = relayProcess !== null && !relayProcess.killed
+  const healthy = await isRelayHealthy()
+  
+  return {
+    running,
+    healthy,
+    port: RELAY_PORT,
+    pid: relayProcess?.pid,
+    restartCount
+  }
+}
+
+// Register shutdown handlers
+if (typeof process !== 'undefined') {
+  const handleShutdown = (signal: string) => {
+    logger.info(`[RelayBootstrap] Received ${signal}, shutting down relay`)
+    shutdownRelay().then(() => {
+      process.exit(0)
+    }).catch(err => {
+      logger.error('[RelayBootstrap] Error during shutdown', err)
+      process.exit(1)
+    })
+  }
+
+  process.on('SIGINT', () => handleShutdown('SIGINT'))
+  process.on('SIGTERM', () => handleShutdown('SIGTERM'))
+  
+  // Also handle uncaught errors
+  process.on('uncaughtException', (error) => {
+    logger.error('[RelayBootstrap] Uncaught exception', error)
+    shutdownRelay()
+  })
+  
+  process.on('unhandledRejection', (reason, promise) => {
+    logger.error('[RelayBootstrap] Unhandled rejection', { reason, promise })
+  })
+}
+
+// Export relay URL for convenience
+export const RELAY_BASE_URL = `http://localhost:${RELAY_PORT}`

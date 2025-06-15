@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
 import { streamTranscript, isInitialized } from '@/services/callRelayDirect'
+import { callRelayService } from '@/services/callRelayService'
 
 export async function GET(req: NextRequest) {
   const requestId = req.headers.get('x-request-id') || Math.random().toString(36).substr(2, 9)
@@ -18,7 +19,35 @@ export async function GET(req: NextRequest) {
 
     logger.info({ requestId, callSid }, 'transcript.get.request')
 
-    // Check if relay is initialized
+    // Check if we're using relay subprocess
+    const useRelaySubprocess = process.env.USE_RELAY_SUBPROCESS === 'true'
+    
+    if (useRelaySubprocess) {
+      // Check if relay service is running
+      const isHealthy = await callRelayService.health()
+      if (!isHealthy) {
+        return NextResponse.json(
+          { error: 'Call relay service is not running' },
+          { status: 503 }
+        )
+      }
+      
+      // Get transcript from relay service
+      const transcriptData = await callRelayService.streamTranscript(callSid)
+      
+      logger.info({ 
+        requestId, 
+        callSid,
+        transcriptCount: transcriptData.transcript.length 
+      }, 'transcript.get.success')
+      
+      return NextResponse.json({
+        success: true,
+        ...transcriptData,
+      })
+    }
+
+    // Default: Use direct relay functions
     if (!isInitialized()) {
       logger.warn({ requestId }, 'transcript.get.relay_not_initialized')
       return NextResponse.json(
