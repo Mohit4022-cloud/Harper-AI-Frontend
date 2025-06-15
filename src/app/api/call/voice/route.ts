@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import twilio from 'twilio'
-import { callRelayService } from '@/services/callRelayService'
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,8 +15,13 @@ export async function GET(req: NextRequest) {
     // Use ElevenLabs MP3 if available
     const elevenLabsUrl = settings?.elevenLabsAudioUrl || process.env.ELEVENLABS_AUDIO_URL
     
-    // Get the media stream URL from relay service
-    const mediaStreamUrl = callRelayService.getMediaStreamUrl()
+    // Get the WebSocket URL for media streaming
+    const relayPort = process.env.RELAY_PORT || '8000'
+    const wsProtocol = process.env.NODE_ENV === 'production' ? 'wss' : 'ws'
+    const wsHost = process.env.NODE_ENV === 'production' 
+      ? req.headers.get('host') || 'localhost'
+      : `localhost:${relayPort}`
+    const mediaStreamUrl = `${wsProtocol}://${wsHost}/media-stream`
     
     // Connect to the WebSocket stream
     const connect = twiml.connect()

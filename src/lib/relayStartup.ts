@@ -42,9 +42,9 @@ export async function initializeRelayOnStartup(): Promise<void> {
       const missing = required.filter(key => !process.env[key])
       
       if (missing.length > 0) {
-        logger.warn('[RelayStartup] Missing required environment variables, relay will start on demand', {
+        logger.warn({
           missing
-        })
+        }, '[RelayStartup] Missing required environment variables, relay will start on demand')
         return
       }
 
@@ -54,17 +54,17 @@ export async function initializeRelayOnStartup(): Promise<void> {
       // Get status
       const status = await getRelayStatus()
       
-      logger.info('[RelayStartup] Relay service initialized successfully', {
+      logger.info({
         port: status.port,
         pid: status.pid,
         healthy: status.healthy
-      })
+      }, '[RelayStartup] Relay service initialized successfully')
       
     } catch (error: any) {
-      logger.error('[RelayStartup] Failed to initialize relay service', {
+      logger.error({
         error: error.message,
         stack: error.stack
-      })
+      }, '[RelayStartup] Failed to initialize relay service')
       // Don't throw - let the service start on demand instead
     }
   })()
@@ -77,7 +77,7 @@ if (process.env.NODE_ENV !== 'test' && typeof process !== 'undefined') {
   // Delay startup to avoid blocking the main thread
   setTimeout(() => {
     initializeRelayOnStartup().catch(err => {
-      logger.error('[RelayStartup] Background initialization failed', err)
+      logger.error(err, '[RelayStartup] Background initialization failed')
     })
   }, 1000)
 }

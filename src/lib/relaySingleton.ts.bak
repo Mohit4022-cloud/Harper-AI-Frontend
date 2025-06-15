@@ -115,7 +115,7 @@ async function spawnRelay(): Promise<ChildProcess> {
       
       setTimeout(() => {
         ensureRelayIsRunning().catch(err => {
-          logger.error(err, '[RelayBootstrap] Failed to restart relay')
+          logger.error('[RelayBootstrap] Failed to restart relay', err)
         })
       }, 1000 * restartCount) // Exponential backoff
     }
@@ -123,13 +123,13 @@ async function spawnRelay(): Promise<ChildProcess> {
 
   // Handle spawn errors
   child.on('error', (error) => {
-    logger.error(error, '[RelayBootstrap] Failed to spawn relay process')
+    logger.error('[RelayBootstrap] Failed to spawn relay process', error)
   })
 
-  logger.info({ 
+  logger.info('[RelayBootstrap] Spawned new relay', { 
     pid: child.pid,
     port: RELAY_PORT 
-  }, '[RelayBootstrap] Spawned new relay')
+  })
   
   return child
 }
@@ -170,21 +170,21 @@ export async function ensureRelayIsRunning(): Promise<void> {
       const isHealthy = await waitForRelayHealth()
       
       if (isHealthy) {
-        logger.info({ 
+        logger.info('[RelayBootstrap] Relay is ready', { 
           port: RELAY_PORT,
           pid: relayProcess.pid 
-        }, '[RelayBootstrap] Relay is ready')
+        })
         return
       } else {
         throw new Error('Relay failed health check after startup')
       }
       
     } catch (error: any) {
-      logger.error({
+      logger.error('[RelayBootstrap] Failed to start relay', {
         attempt: attempts,
         maxAttempts,
         error: error.message
-      }, '[RelayBootstrap] Failed to start relay')
+      })
       
       // Kill the process if it exists
       if (relayProcess) {
@@ -221,7 +221,7 @@ export async function ensureRelayIsRunning(): Promise<void> {
  */
 function killRelay(): void {
   if (relayProcess && !relayProcess.killed) {
-    logger.info({ pid: relayProcess.pid }, '[RelayBootstrap] Killing relay process')
+    logger.info('[RelayBootstrap] Killing relay process', { pid: relayProcess.pid })
     relayProcess.kill('SIGTERM')
     relayProcess = null
   }
@@ -267,7 +267,7 @@ if (typeof process !== 'undefined') {
     shutdownRelay().then(() => {
       process.exit(0)
     }).catch(err => {
-      logger.error(err, '[RelayBootstrap] Error during shutdown')
+      logger.error('[RelayBootstrap] Error during shutdown', err)
       process.exit(1)
     })
   }
@@ -277,12 +277,12 @@ if (typeof process !== 'undefined') {
   
   // Also handle uncaught errors
   process.on('uncaughtException', (error) => {
-    logger.error(error, '[RelayBootstrap] Uncaught exception')
+    logger.error('[RelayBootstrap] Uncaught exception', error)
     shutdownRelay()
   })
   
   process.on('unhandledRejection', (reason, promise) => {
-    logger.error({ reason, promise }, '[RelayBootstrap] Unhandled rejection')
+    logger.error('[RelayBootstrap] Unhandled rejection', { reason, promise })
   })
 }
 

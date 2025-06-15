@@ -28,9 +28,6 @@ const logFile = fs.createWriteStream('./next.debug.log', { flags: 'a' });
 const nextConfig = {
   // Minimal config for debugging
   reactStrictMode: true,
-  experimental: {
-    instrumentationHook: true,
-  },
   images: {
     domains: ['localhost'],
   },
