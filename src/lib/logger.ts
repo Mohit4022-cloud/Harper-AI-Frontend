@@ -9,7 +9,10 @@ import type { NextRequest } from 'next/server'
 type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
 // Get log level from env (default to info)
-const LOG_LEVEL = process.env.LOG_LEVEL || 'info'
+const LOG_LEVEL = (process.env.LOG_LEVEL || 'info').toLowerCase() as LogLevel
+
+// Debug mode - includes full payloads and responses
+const DEBUG_MODE = LOG_LEVEL === 'debug'
 
 // Log level priorities
 const LOG_LEVELS: Record<LogLevel, number> = {
@@ -75,16 +78,28 @@ class SimpleLogger {
       if (message) logObj.message = message
     }
 
+    // Strip sensitive data unless in debug mode
+    if (!DEBUG_MODE && level !== 'error') {
+      delete logObj.body
+      delete logObj.payload
+      delete logObj.response
+    }
+
     // Output based on environment
     if (process.env.NODE_ENV === 'development') {
       // Pretty print in development
-      console.log(prefix, message || '')
+      console.log(prefix, message || logObj.message || '')
       if (Object.keys(logObj).length > 3) {
         console.log(JSON.stringify(logObj, null, 2))
       }
     } else {
-      // JSON in production
-      console.log(JSON.stringify(logObj))
+      // JSON in production for structured logging
+      // Use appropriate stream based on level
+      if (level === 'error') {
+        console.error(JSON.stringify(logObj))
+      } else {
+        console.log(JSON.stringify(logObj))
+      }
     }
   }
 
@@ -193,16 +208,22 @@ export function logResponse(
 function sanitizeObject(obj: any): any {
   if (!obj || typeof obj !== 'object') return obj
   
+  // In debug mode, show everything
+  if (DEBUG_MODE) return obj
+  
   const sensitiveFields = [
     'password',
     'token',
     'authToken', 
     'twilioAuthToken',
     'elevenLabsKey',
+    'elevenLabsApiKey',
     'apiKey',
     'api_key',
     'secret',
-    'authorization'
+    'authorization',
+    'twilioAccountSid',
+    'twilioPhoneNumber'
   ]
   
   const sanitized = Array.isArray(obj) ? [...obj] : { ...obj }

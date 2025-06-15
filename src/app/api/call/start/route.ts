@@ -11,10 +11,26 @@ import { validateE164 } from '@/lib/utils'
 export async function POST(req: NextRequest) {
   const logger = createRequestLogger(req)
   const requestId = `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const startTime = Date.now()
   
   try {
+    // Log incoming request at debug level
+    logger.debug({ 
+      method: req.method,
+      path: '/api/call/start',
+      headers: Object.fromEntries(req.headers.entries())
+    }, 'api.call.start.incoming')
+    
     const body = await req.json()
     const { phone, settings: clientSettings } = body
+    
+    // Log request body at debug level
+    logger.debug({ 
+      requestId, 
+      body,
+      hasPhone: !!phone,
+      hasSettings: !!clientSettings
+    }, 'api.call.start.body')
     
     logger.info({ requestId, phone }, 'call.start.request')
 
@@ -108,6 +124,19 @@ export async function POST(req: NextRequest) {
     // Use the unified call service
     logger.info({ requestId }, 'call.start.using_unified_service')
     
+    // Log before calling relay service
+    logger.debug({ 
+      service: 'callService',
+      action: 'startCall',
+      params: {
+        to: phone,
+        from: twilioNumber,
+        hasScript: !!clientSettings?.script,
+        hasPersona: !!clientSettings?.persona,
+        hasContext: !!clientSettings?.context
+      }
+    }, 'api.call.start.before_relay')
+    
     const result = await callService.startCall({
       to: phone,
       from: twilioNumber,
@@ -115,6 +144,12 @@ export async function POST(req: NextRequest) {
       persona: clientSettings?.persona || "Professional, friendly, and helpful sales assistant",
       context: clientSettings?.context || "This is a call from Harper AI."
     })
+    
+    // Log after calling relay service
+    logger.debug({ 
+      result,
+      duration: Date.now() - startTime
+    }, 'api.call.start.after_relay')
     
     if (!result.success) {
       logger.error({ 
@@ -131,35 +166,61 @@ export async function POST(req: NextRequest) {
       )
     }
     
+    const duration = Date.now() - startTime
+    
     logger.info({ 
       requestId, 
       callSid: result.callSid,
-      reqId: result.reqId
+      reqId: result.reqId,
+      duration
     }, 'call.start.success')
     
-    return NextResponse.json({
+    const responseBody = {
       success: true,
       callSid: result.callSid,
       status: 'initiated',
       direction: 'outbound-api',
       from: twilioNumber,
       to: phone,
-    })
+    }
+    
+    logger.debug({ 
+      responseBody,
+      status: 200,
+      duration
+    }, 'api.call.start.response')
+    
+    return NextResponse.json(responseBody)
     
   } catch (error: any) {
+    const duration = Date.now() - startTime
+    
     logger.error({ 
       requestId, 
-      error: error.message,
-      stack: error.stack 
+      error: {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        ...error
+      },
+      duration
     }, 'call.start.error')
     
-    return NextResponse.json(
-      { 
-        error: 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? error.message : 'An unexpected error occurred'
-      },
-      { status: 500 }
-    )
+    const errorResponse = { 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' || process.env.LOG_LEVEL === 'debug' 
+        ? error.message 
+        : 'An unexpected error occurred',
+      requestId
+    }
+    
+    logger.debug({ 
+      responseBody: errorResponse,
+      status: 500,
+      duration
+    }, 'api.call.start.error_response')
+    
+    return NextResponse.json(errorResponse, { status: 500 })
   }
 }
 

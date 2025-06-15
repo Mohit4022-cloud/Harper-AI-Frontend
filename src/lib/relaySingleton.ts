@@ -26,12 +26,28 @@ const HEALTH_CHECK_RETRIES = 5
  */
 async function isRelayHealthy(): Promise<boolean> {
   try {
+    logger.debug({ url: RELAY_HEALTH_URL }, '[RelaySingleton] Checking relay health')
+    
     const response = await axios.get(RELAY_HEALTH_URL, { 
       timeout: 2000,
       validateStatus: (status) => status === 200 
     })
-    return response.data.status === 'healthy' || response.data.status === 'ok'
-  } catch (error) {
+    
+    const isHealthy = response.data.status === 'healthy' || response.data.status === 'ok'
+    
+    logger.debug({ 
+      url: RELAY_HEALTH_URL,
+      status: response.status,
+      data: response.data,
+      isHealthy
+    }, '[RelaySingleton] Health check result')
+    
+    return isHealthy
+  } catch (error: any) {
+    logger.debug({ 
+      url: RELAY_HEALTH_URL,
+      error: error.code || error.message
+    }, '[RelaySingleton] Health check failed')
     return false
   }
 }
@@ -41,11 +57,28 @@ async function isRelayHealthy(): Promise<boolean> {
  */
 async function waitForRelayHealth(timeoutMs: number = RELAY_STARTUP_TIMEOUT): Promise<boolean> {
   const startTime = Date.now()
+  let attempts = 0
+  
+  logger.info({ timeoutMs }, '[RelaySingleton] Waiting for relay to become healthy')
   
   while (Date.now() - startTime < timeoutMs) {
+    attempts++
+    
     if (await isRelayHealthy()) {
+      const duration = Date.now() - startTime
+      logger.info({ 
+        attempts,
+        duration 
+      }, '[RelaySingleton] Relay is healthy')
       return true
     }
+    
+    logger.debug({ 
+      attempt: attempts,
+      elapsed: Date.now() - startTime,
+      nextCheckIn: HEALTH_CHECK_INTERVAL
+    }, '[RelaySingleton] Relay not ready, waiting...')
+    
     await new Promise(resolve => setTimeout(resolve, HEALTH_CHECK_INTERVAL))
   }
   
@@ -82,7 +115,7 @@ async function spawnRelay(): Promise<ChildProcess> {
   child.stdout?.on('data', (data) => {
     const message = data.toString().trim()
     if (message) {
-      logger.info(`[Relay] ${message}`)
+      logger.debug({ source: 'relay_stdout' }, `[Relay] ${message}`)
     }
   })
 
@@ -90,7 +123,7 @@ async function spawnRelay(): Promise<ChildProcess> {
   child.stderr?.on('data', (data) => {
     const message = data.toString().trim()
     if (message) {
-      logger.error(`[Relay Error] ${message}`)
+      logger.error({ source: 'relay_stderr' }, `[Relay Error] ${message}`)
     }
   })
 
@@ -123,7 +156,14 @@ async function spawnRelay(): Promise<ChildProcess> {
 
   // Handle spawn errors
   child.on('error', (error) => {
-    logger.error(error, '[RelayBootstrap] Failed to spawn relay process')
+    logger.error({
+      error: {
+        message: error.message,
+        stack: error.stack,
+        code: (error as any).code
+      },
+      pid: child.pid
+    }, '[RelayBootstrap] Failed to spawn relay process')
   })
 
   logger.info({ 
@@ -138,14 +178,24 @@ async function spawnRelay(): Promise<ChildProcess> {
  * Ensure the relay is running (singleton pattern)
  */
 export async function ensureRelayIsRunning(): Promise<void> {
+  const startTime = Date.now()
+  logger.debug('[RelayBootstrap] Ensuring relay is running')
+  
   // If we already have a process, check if it's still alive
   if (relayProcess && !relayProcess.killed) {
+    logger.debug({ pid: relayProcess.pid }, '[RelayBootstrap] Checking existing relay process')
+    
     // Verify it's actually responding
     if (await isRelayHealthy()) {
-      logger.debug('[RelayBootstrap] Existing relay is healthy')
+      logger.debug({ 
+        pid: relayProcess.pid,
+        duration: Date.now() - startTime
+      }, '[RelayBootstrap] Existing relay is healthy')
       return
     } else {
-      logger.warn('[RelayBootstrap] Existing relay process not responding, will restart')
+      logger.warn({ 
+        pid: relayProcess.pid 
+      }, '[RelayBootstrap] Existing relay process not responding, will restart')
       killRelay()
     }
   }
@@ -183,7 +233,11 @@ export async function ensureRelayIsRunning(): Promise<void> {
       logger.error({
         attempt: attempts,
         maxAttempts,
-        error: error.message
+        error: {
+          message: error.message,
+          stack: error.stack,
+          code: (error as any).code
+        }
       }, '[RelayBootstrap] Failed to start relay')
       
       // Kill the process if it exists
@@ -207,11 +261,22 @@ export async function ensureRelayIsRunning(): Promise<void> {
       // If not the last attempt, wait before retrying
       if (attempts < maxAttempts) {
         const backoffMs = Math.min(1000 * Math.pow(2, attempts - 1), 10000)
-        logger.info(`[RelayBootstrap] Waiting ${backoffMs}ms before retry`)
+        logger.info({ 
+          backoffMs,
+          nextAttempt: attempts + 1,
+          maxAttempts
+        }, '[RelayBootstrap] Waiting before retry')
         await new Promise(resolve => setTimeout(resolve, backoffMs))
       }
     }
   }
+  
+  const totalDuration = Date.now() - startTime
+  logger.error({ 
+    maxAttempts,
+    totalDuration,
+    restartCount
+  }, '[RelayBootstrap] Failed to start relay after all attempts')
   
   throw new Error(`Failed to start relay after ${maxAttempts} attempts`)
 }
