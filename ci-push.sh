@@ -58,6 +58,12 @@ main() {
     }
     log_info "Found project root: $PROJECT_ROOT"
     
+    # Safety check: refuse to run from home directory
+    if [ "$PROJECT_ROOT" = "$HOME" ]; then
+        echo "❌ Refusing to run: discovered .git in \$HOME (likely the wrong repo)"
+        exit 1
+    fi
+    
     # Step 2: Safely change to project root
     echo "→ Step: Change to project root"
     log_info "Changing to project root directory..."

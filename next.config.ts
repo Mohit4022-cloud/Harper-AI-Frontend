@@ -7,14 +7,6 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  experimental: {
-    ppr: 'incremental', // Enable Partial Prerendering
-    reactCompiler: {
-      compilationMode: 'annotation'
-    },
-    optimizePackageImports: ['@shadcn/ui', 'framer-motion', 'date-fns', 'lucide-react'],
-    typedRoutes: true,
-  },
   transpilePackages: ['@tanstack/react-query', '@tanstack/react-virtual'],
   images: {
     formats: ['image/avif', 'image/webp'],
