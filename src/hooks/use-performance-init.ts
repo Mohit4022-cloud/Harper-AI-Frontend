@@ -11,12 +11,20 @@ export function usePerformanceInit() {
     
     // Start memory leak detection in development
     if (process.env.NODE_ENV === 'development') {
-      const { MemoryLeakDetector } = require('@/lib/performance-advanced')
-      const detector = new MemoryLeakDetector()
-      detector.start()
+      import('@/lib/performance-advanced').then(({ MemoryLeakDetector }) => {
+        const detector = new MemoryLeakDetector()
+        detector.start()
+        
+        // Store detector for cleanup
+        (window as any).__memoryDetector = detector
+      })
       
       return () => {
-        detector.stop()
+        const detector = (window as any).__memoryDetector
+        if (detector) {
+          detector.stop()
+          delete (window as any).__memoryDetector
+        }
       }
     }
   }, [])

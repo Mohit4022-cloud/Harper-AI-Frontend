@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client'
-import { EventMap, ContactId, CallId, Contact, UserId } from '@/types/brand'
+import { EventMap, Contact } from '@/types/brand'
 import { useAppStore } from '@/store'
-import { queryClient, invalidateContacts, invalidateCalls, invalidateMetrics } from './query-client'
+import { queryClient, invalidateContacts, invalidateCalls } from './query-client'
 
 interface ServerToClientEvents {
   'contact:created': (data: EventMap['contact:created']) => void
