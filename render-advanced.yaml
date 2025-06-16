@@ -49,5 +49,5 @@ services:
         value: "true"
       - key: NEXT_PUBLIC_ENABLE_REAL_TIME_TRANSCRIPTION
         value: "true"
-    branch: feature/advanced-ai-features
+    branch: V3-Frontend
     repo: https://github.com/Mohit4022-cloud/Harper-AI-Frontend.git
