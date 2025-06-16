@@ -1,5 +1,9 @@
 import type { NextConfig } from 'next'
 
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+})
+
 const nextConfig: NextConfig = {
   experimental: {
     // ppr: 'incremental', // PPR will be enabled when stable in Next.js
@@ -9,8 +13,8 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['@shadcn/ui', 'framer-motion', 'date-fns', '@tanstack/react-query', '@tanstack/react-virtual'],
   },
   eslint: {
-    // Temporarily ignore ESLint errors during production builds
-    ignoreDuringBuilds: true,
+    // Run ESLint during production builds
+    ignoreDuringBuilds: false,
   },
   images: {
     formats: ['image/avif', 'image/webp'],
@@ -83,4 +87,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+export default withBundleAnalyzer(nextConfig)
