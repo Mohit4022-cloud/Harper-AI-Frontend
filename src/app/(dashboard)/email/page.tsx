@@ -225,6 +225,15 @@ export default function EmailPage() {
   }
 
   const generateSingleEmail = async (contact: any) => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to generate emails",
+        variant: "destructive"
+      })
+      return
+    }
+
     setIsGenerating(true)
     try {
       const response = await fetch('/api/email/personalize', {
@@ -361,6 +370,15 @@ export default function EmailPage() {
   }
 
   const exportToCRM = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to export to CRM",
+        variant: "destructive"
+      })
+      return
+    }
+
     try {
       const response = await fetch('/api/integrations/crm/export', {
         method: 'POST',
