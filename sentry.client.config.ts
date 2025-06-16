@@ -65,7 +65,7 @@ if (SENTRY_DSN) {
   beforeSend(event, hint) {
     // Filter out non-app errors
     if (event.exception) {
-      const error = hint.originalException
+      const error = hint.originalException as Error | undefined
       
       // Don't send errors from browser extensions
       if (error && error.stack && error.stack.match(/chrome-extension:|moz-extension:|ms-browser-extension:/)) {
