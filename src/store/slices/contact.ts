@@ -27,6 +27,8 @@ export interface ContactSlice {
   
   // Selection
   selectContact: (id: ContactId) => void
+  toggleContactSelection: (id: ContactId) => void
+  setSelectedContacts: (contacts: Set<ContactId>) => void
   selectAll: () => void
   clearSelection: () => void
   
@@ -93,6 +95,18 @@ export const createContactSlice: StateCreator<ContactSlice> = (set, get) => ({
     }
     return { selectedContacts: newSelection }
   }),
+
+  toggleContactSelection: (id) => set((state) => {
+    const newSelection = new Set(state.selectedContacts)
+    if (newSelection.has(id)) {
+      newSelection.delete(id)
+    } else {
+      newSelection.add(id)
+    }
+    return { selectedContacts: newSelection }
+  }),
+
+  setSelectedContacts: (contacts) => set({ selectedContacts: contacts }),
 
   selectAll: () => set((state) => ({
     selectedContacts: new Set(state.contacts.map(c => c.id))

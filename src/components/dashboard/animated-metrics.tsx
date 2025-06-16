@@ -236,7 +236,12 @@ export function AnimatedDashboard() {
   }
 
   const metrics = dashboardData?.metrics || []
-  const performance = dashboardData?.performance || {}
+  const performance = dashboardData?.performance || {
+    callSuccess: 0,
+    emailOpen: 0,
+    responseRate: 0,
+    leadScore: 0
+  }
 
   return (
     <div className="space-y-6">
@@ -313,10 +318,10 @@ export function AnimatedDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              <PerformanceGauge value={performance.callSuccess || 0} label="Call Success" />
-              <PerformanceGauge value={performance.emailOpen || 0} label="Email Open" />
-              <PerformanceGauge value={performance.responseRate || 0} label="Response Rate" />
-              <PerformanceGauge value={performance.leadScore || 0} label="Lead Score" />
+              <PerformanceGauge value={performance?.callSuccess || 0} label="Call Success" />
+              <PerformanceGauge value={performance?.emailOpen || 0} label="Email Open" />
+              <PerformanceGauge value={performance?.responseRate || 0} label="Response Rate" />
+              <PerformanceGauge value={performance?.leadScore || 0} label="Lead Score" />
             </div>
           </CardContent>
         </Card>

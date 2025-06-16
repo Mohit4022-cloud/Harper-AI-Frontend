@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { authRateLimit, apiRateLimit } from '@/lib/rate-limit';
+import { csrfProtection } from '@/lib/csrf';
 
-// CORS configuration with enhanced security and error handling
+// CORS configuration with enhanced security
 const ALLOWED_ORIGINS = {
-  development: ['http://localhost:3000', 'http://localhost:3001'],
+  development: [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3000'
+  ],
   production: [
     'https://harper-ai-frontend.onrender.com',
-    'https://harper-ai-frontend-1.onrender.com',
+    'https://harper-ai-frontend-2.onrender.com',
     'https://harper-ai-advanced-features.onrender.com'
   ]
 };
@@ -18,10 +24,42 @@ const CORS_HEADERS = {
   maxAge: '86400' // 24 hours
 };
 
-export function middleware(request: NextRequest) {
-  // Handle CORS for API routes
+// Security headers configuration
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  'Content-Security-Policy': process.env.NODE_ENV === 'production' 
+    ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none';"
+    : "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' http: https: ws: wss:;"
+};
+
+export async function middleware(request: NextRequest) {
+  // Skip middleware for static assets
+  if (request.nextUrl.pathname.startsWith('/_next/') || 
+      request.nextUrl.pathname.includes('.')) {
+    return NextResponse.next();
+  }
+
+  // Handle API routes
   if (request.nextUrl.pathname.startsWith('/api')) {
     try {
+      // Apply rate limiting
+      if (request.nextUrl.pathname.startsWith('/api/auth')) {
+        const rateLimitResponse = await authRateLimit(request);
+        if (rateLimitResponse) return rateLimitResponse;
+      } else {
+        const rateLimitResponse = await apiRateLimit(request);
+        if (rateLimitResponse) return rateLimitResponse;
+      }
+
+      // Apply CSRF protection
+      const csrfResponse = await csrfProtection(request);
+      if (csrfResponse) return csrfResponse;
+
       const response = NextResponse.next();
       const origin = request.headers.get('origin');
       const isDevMode = process.env.NODE_ENV === 'development';
@@ -31,14 +69,15 @@ export function middleware(request: NextRequest) {
         ? ALLOWED_ORIGINS.development 
         : ALLOWED_ORIGINS.production;
       
-      // In development, also allow any localhost origin
-      if (isDevMode && origin?.startsWith('http://localhost:')) {
+      // Check origin and set CORS headers
+      if (origin && allowedOrigins.includes(origin)) {
         response.headers.set('Access-Control-Allow-Origin', origin);
-      } else if (origin && allowedOrigins.includes(origin)) {
+      } else if (isDevMode && origin?.startsWith('http://localhost:')) {
+        // In development, allow any localhost origin
         response.headers.set('Access-Control-Allow-Origin', origin);
-      } else if (!origin && isDevMode) {
-        // Allow same-origin requests in development
-        response.headers.set('Access-Control-Allow-Origin', '*');
+      } else if (!origin || origin === request.nextUrl.origin) {
+        // Same-origin request
+        response.headers.set('Access-Control-Allow-Origin', request.nextUrl.origin);
       }
       
       // Set CORS headers
@@ -47,32 +86,26 @@ export function middleware(request: NextRequest) {
       response.headers.set('Access-Control-Allow-Credentials', CORS_HEADERS.credentials);
       response.headers.set('Access-Control-Max-Age', CORS_HEADERS.maxAge);
       
-      // Security headers
-      response.headers.set('X-Content-Type-Options', 'nosniff');
-      response.headers.set('X-Frame-Options', 'DENY');
-      response.headers.set('X-XSS-Protection', '1; mode=block');
+      // Set security headers
+      Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
       
       // Handle preflight requests
       if (request.method === 'OPTIONS') {
-        console.log('[CORS] Handling preflight request from:', origin || 'no-origin');
         return new Response(null, { 
           status: 200, 
           headers: response.headers 
         });
       }
       
-      // Log CORS handling in development
-      if (isDevMode) {
-        console.log('[CORS] Request from:', origin || 'same-origin', 'to:', request.url);
-      }
-      
       return response;
     } catch (error) {
-      console.error('[CORS] Middleware error:', error);
+      console.error('[Middleware] Error:', error);
       return new NextResponse(
         JSON.stringify({ 
           success: false, 
-          message: 'CORS configuration error',
+          message: 'Internal server error',
           statusCode: 500 
         }),
         { 
@@ -93,10 +126,19 @@ export function middleware(request: NextRequest) {
       version: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'
     });
   }
+
+  // For non-API routes, add security headers
+  const response = NextResponse.next();
+  Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
   
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
-  matcher: '/api/:path*',
+  matcher: [
+    '/api/:path*',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ],
 };

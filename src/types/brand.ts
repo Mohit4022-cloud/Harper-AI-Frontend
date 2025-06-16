@@ -59,6 +59,7 @@ export interface Contact {
   company?: string
   title?: string
   department?: string
+  avatar?: string // Added for UI components
   
   // Lead information
   leadStatus: 'new' | 'contacted' | 'qualified' | 'unqualified' | 'nurture'
@@ -80,6 +81,7 @@ export interface Contact {
   totalCalls: number
   totalEmails: number
   sentiment?: number // -1 to 1
+  interactions?: number // Total interactions count
   
   // Assignment
   assignedToId?: UserId

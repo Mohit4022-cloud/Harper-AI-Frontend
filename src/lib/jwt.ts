@@ -1,8 +1,17 @@
 import jwt from 'jsonwebtoken'
 import { User } from '@/types'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret'
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret'
+// Ensure JWT secrets are properly configured
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required')
+}
+
+if (!process.env.JWT_REFRESH_SECRET) {
+  throw new Error('JWT_REFRESH_SECRET environment variable is required')
+}
+
+const JWT_SECRET = process.env.JWT_SECRET
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET
 
 export interface JWTPayload {
   userId: string
