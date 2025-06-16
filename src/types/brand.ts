@@ -20,6 +20,15 @@ export type EmailRoutes = APIRoute<'emails' | 'emails/send' | 'emails/personaliz
 
 // Event system types
 export interface EventMap {
+  // System events
+  'connected': void
+  'disconnected': void
+  'authenticated': void
+  'authError': { message: string }
+  'error': any
+  'ping': { timestamp: number }
+  'pong': void
+  
   // Contact events
   'contact:created': { contactId: ContactId; userId: UserId; timestamp: Date }
   'contact:updated': { contactId: ContactId; changes: Partial<Contact>; userId: UserId }
@@ -45,8 +54,12 @@ export interface EventMap {
   
   // Real-time collaboration
   'user:active': { userId: UserId; page: string }
-  'user:typing': { userId: UserId; contactId?: ContactId; field: string }
+  'user:typing': { userId: UserId; contactId?: ContactId; field: string; timestamp: Date }
   'user:idle': { userId: UserId }
+  
+  // Authentication
+  'auth': { token: string }
+  'auth:success': void
 }
 
 // Enhanced Contact type

@@ -4,6 +4,8 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/slices/authStore'
 import { Sidebar } from '@/components/layouts/Sidebar'
+import { WebSocketProvider } from '@/components/providers/WebSocketProvider'
+import { PresenceIndicator } from '@/components/realtime/PresenceIndicator'
 
 export default function DashboardLayout({
   children,
@@ -31,11 +33,14 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
-    </div>
+    <WebSocketProvider>
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
+        <PresenceIndicator />
+      </div>
+    </WebSocketProvider>
   )
 }
