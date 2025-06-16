@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 import Link from 'next/link'
@@ -20,7 +21,7 @@ const errorMessages: Record<string, { title: string; description: string }> = {
   },
 }
 
-export default function AuthErrorPage() {
+function AuthErrorContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error') || 'Default'
   const errorInfo = errorMessages[error] || errorMessages.Default
@@ -73,5 +74,21 @@ export default function AuthErrorPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function AuthErrorPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-pulse">
+          <div className="h-12 w-12 bg-gray-200 rounded-full mx-auto mb-4"></div>
+          <div className="h-8 bg-gray-200 rounded w-48 mx-auto mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-64 mx-auto"></div>
+        </div>
+      </div>
+    }>
+      <AuthErrorContent />
+    </Suspense>
   )
 }
