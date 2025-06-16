@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     message: "Harper AI API Status",
     timestamp: new Date().toISOString(),
     environment: env.server.NODE_ENV,
-    version: env.client.NEXT_PUBLIC_APP_VERSION,
+    version: env.client.NEXT_PUBLIC_APP_VERSION || '1.0.0',
     // Only include detailed info in development
     ...(isProduction ? {} : {
       features: {
