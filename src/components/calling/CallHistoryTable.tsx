@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { useCallQueueStore, CallRecord } from '@/stores/callQueueStore'
+import { useCallQueueStore, CallRecord } from '@/store/slices/callQueueStore'
 import { cn } from '@/lib/utils'
 
 export function CallHistoryTable() {

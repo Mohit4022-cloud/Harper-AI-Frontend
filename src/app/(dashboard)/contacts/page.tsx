@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useContactsStore } from '@/stores/contactsStore'
+import { useContactsStore } from '@/store/slices/contactsStore'
 import { Contact } from '@/types/contact'
 import { AddContactForm } from '@/components/contacts/AddContactForm'
 import { EditContactForm } from '@/components/contacts/EditContactForm'

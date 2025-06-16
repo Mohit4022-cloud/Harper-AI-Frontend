@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Mic, User } from 'lucide-react'
-import { useCallQueueStore } from '@/stores/callQueueStore'
+import { useCallQueueStore } from '@/store/slices/callQueueStore'
 import { cn } from '@/lib/utils'
 
 interface TranscriptLine {

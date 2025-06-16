@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuthStore } from '@/stores/authStore'
+import { useAuthStore } from '@/store/slices/authStore'
 import { Sidebar } from '@/components/layouts/Sidebar'
 
 export default function DashboardLayout({

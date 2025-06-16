@@ -14,8 +14,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/components/ui/use-toast'
 import { parseCSV, validateCSVStructure } from '@/lib/utils/csvParser'
 import { Mail, Upload, Download, Users, Sparkles, Send, FileText, AlertCircle, Search } from 'lucide-react'
-import { useAuthStore } from '@/stores/authStore'
-import { useContactsStore } from '@/stores/contactsStore'
+import { useAuthStore } from '@/store/slices/authStore'
+import { useContactsStore } from '@/store/slices/contactsStore'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 interface EmailSettings {

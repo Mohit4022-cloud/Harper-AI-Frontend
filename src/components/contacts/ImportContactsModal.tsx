@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { useAuthStore } from '@/stores/authStore'
+import { useAuthStore } from '@/store/slices/authStore'
 import { useToast } from '@/hooks/use-toast'
 import { Upload, FileText, AlertCircle } from 'lucide-react'
 

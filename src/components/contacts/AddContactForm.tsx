@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CreateContactSchema, CreateContact } from '@/types/contact'
-import { useContactsStore } from '@/stores/contactsStore'
+import { useContactsStore } from '@/store/slices/contactsStore'
 import { useToast } from '@/components/ui/use-toast'
 import {
   Dialog,

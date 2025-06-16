@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuthStore } from '@/stores/authStore'
+import { useAuthStore } from '@/store/slices/authStore'
 import { mockUsers } from '@/lib/mockData'
 import { generateTokens } from '@/lib/jwt'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'

@@ -22,7 +22,7 @@ import {
   Brain,
   Loader2,
 } from 'lucide-react'
-import { useReportsStore } from '@/stores/reportsStore'
+import { useReportsStore } from '@/store/slices/reportsStore'
 import { MetricsGrid } from '@/components/reports/MetricsGrid'
 import { PerformanceScore } from '@/components/reports/PerformanceScore'
 import { AIInsights } from '@/components/reports/AIInsights'

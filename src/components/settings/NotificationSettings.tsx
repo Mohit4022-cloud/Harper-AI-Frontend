@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/components/ui/use-toast'
-import { useSettingsStore } from '@/stores/settingsStore'
+import { useSettingsStore } from '@/store/slices/settingsStore'
 
 export function NotificationSettings() {
   const { toast } = useToast()

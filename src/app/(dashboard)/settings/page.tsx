@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/components/ui/use-toast'
 import { User, Bell, Palette, Link, Loader2 } from 'lucide-react'
-import { useSettingsStore } from '@/stores/settingsStore'
+import { useSettingsStore } from '@/store/slices/settingsStore'
 import { ProfileSettings } from '@/components/settings/ProfileSettings'
 import { NotificationSettings } from '@/components/settings/NotificationSettings'
 import { ThemeSettings } from '@/components/settings/ThemeSettings'

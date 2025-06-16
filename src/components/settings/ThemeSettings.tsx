@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
-import { useSettingsStore } from '@/stores/settingsStore'
+import { useSettingsStore } from '@/store/slices/settingsStore'
 import { cn } from '@/lib/utils'
 
 export function ThemeSettings() {

@@ -9,7 +9,7 @@ import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useAuthStore } from '@/stores/authStore'
+import { useAuthStore } from '@/store/slices/authStore'
 import { Eye, EyeOff, Loader2, Mail, Lock } from 'lucide-react'
 import { getApiBaseUrl } from '@/lib/api'
 

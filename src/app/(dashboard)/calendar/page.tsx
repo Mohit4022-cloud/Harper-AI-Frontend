@@ -16,7 +16,7 @@ import {
   Loader2,
   RefreshCw,
 } from 'lucide-react'
-import { useCalendarStore } from '@/stores/calendarStore'
+import { useCalendarStore } from '@/store/slices/calendarStore'
 import { CalendarHeader } from '@/components/calendar/CalendarHeader'
 import { MonthView } from '@/components/calendar/MonthView'
 import { ListView } from '@/components/calendar/ListView'

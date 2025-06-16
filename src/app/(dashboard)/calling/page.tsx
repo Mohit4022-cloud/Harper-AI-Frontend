@@ -19,8 +19,8 @@ import { CallHistoryTable } from '@/components/calling/CallHistoryTable';
 import { ContactsTable } from '@/components/calling/ContactsTable';
 import { TestCallDialog } from '@/components/calling/TestCallDialog';
 
-import { useCallStore } from '@/stores/callStore';
-import { useCallQueueStore } from '@/stores/callQueueStore';
+import { useCallStore } from '@/store/slices/callStore';
+import { useCallQueueStore } from '@/store/slices/callQueueStore';
 // import twilioService from '@/services/twilio/twilioService'; // TODO: Implement when Twilio service is ready
 import TranscriptionService from '@/services/ai/transcriptionService';
 import { TranscriptSegment } from '@/types/transcript';

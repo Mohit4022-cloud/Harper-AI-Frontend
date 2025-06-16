@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/components/ui/use-toast'
-import { useSettingsStore } from '@/stores/settingsStore'
+import { useSettingsStore } from '@/store/slices/settingsStore'
 
 // Profile form schema
 const ProfileFormSchema = z.object({

@@ -37,7 +37,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Loader2, Calendar as CalendarIcon, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
-import { useContactsStore } from '@/stores/contactsStore'
+import { useContactsStore } from '@/store/slices/contactsStore'
 import { z } from 'zod'
 
 // Form schema (without id and timestamps)

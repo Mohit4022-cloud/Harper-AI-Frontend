@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { useCallQueueStore } from '@/stores/callQueueStore'
+import { useCallQueueStore } from '@/store/slices/callQueueStore'
 import { generateMockTranscript } from '@/lib/mockContacts'
 import { cn } from '@/lib/utils'
 

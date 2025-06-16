@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useSettingsStore } from '@/stores/settingsStore'
+import { useSettingsStore } from '@/store/slices/settingsStore'
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { initializeTheme, settings } = useSettingsStore()
