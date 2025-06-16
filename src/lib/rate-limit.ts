@@ -81,7 +81,7 @@ export function createRateLimiter(config: RateLimitConfig = {}) {
 // Pre-configured rate limiters for different use cases
 export const authRateLimit = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts per window
+  max: 20, // 20 attempts per window - increased for development/testing
   message: 'Too many authentication attempts, please try again later.',
 })
 

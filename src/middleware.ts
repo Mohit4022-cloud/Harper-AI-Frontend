@@ -48,13 +48,21 @@ export async function middleware(request: NextRequest) {
   // Handle API routes
   if (request.nextUrl.pathname.startsWith('/api')) {
     try {
-      // Apply rate limiting
-      if (request.nextUrl.pathname.startsWith('/api/auth')) {
-        const rateLimitResponse = await authRateLimit(request);
-        if (rateLimitResponse) return rateLimitResponse;
-      } else {
-        const rateLimitResponse = await apiRateLimit(request);
-        if (rateLimitResponse) return rateLimitResponse;
+      // Skip rate limiting for health check and debug endpoints
+      const skipRateLimitPaths = ['/api/health', '/api/debug'];
+      const shouldSkipRateLimit = skipRateLimitPaths.some(path => 
+        request.nextUrl.pathname.startsWith(path)
+      );
+
+      if (!shouldSkipRateLimit) {
+        // Apply rate limiting
+        if (request.nextUrl.pathname.startsWith('/api/auth')) {
+          const rateLimitResponse = await authRateLimit(request);
+          if (rateLimitResponse) return rateLimitResponse;
+        } else {
+          const rateLimitResponse = await apiRateLimit(request);
+          if (rateLimitResponse) return rateLimitResponse;
+        }
       }
 
       // Apply CSRF protection
