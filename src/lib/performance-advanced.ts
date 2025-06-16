@@ -314,7 +314,7 @@ export function withPerformance<P extends object>(
         }
       })
       
-      return <Component {...props} ref={ref} />
+      return React.createElement(Component, { ...props, ref })
     }),
     (prevProps, nextProps) => {
       // Custom comparison logic for better memoization

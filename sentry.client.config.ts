@@ -22,7 +22,7 @@ if (SENTRY_DSN) {
   integrations: [
     new Sentry.BrowserTracing({
       // Set sampling rate for performance monitoring
-      tracingOrigins: ['localhost', process.env.NEXT_PUBLIC_APP_URL, /^\//],
+      tracingOrigins: ['localhost', process.env.NEXT_PUBLIC_APP_URL || 'app.harperai.com', /^\//],
       // Track interactions
       routingInstrumentation: Sentry.nextRouterInstrumentation,
     }),
