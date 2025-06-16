@@ -6,7 +6,7 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 
 const nextConfig: NextConfig = {
   experimental: {
-    ppr: true, // Enable Partial Prerendering
+    // ppr: true, // PPR is only available in Next.js canary versions
     reactCompiler: {
       compilationMode: 'annotation'
     },
