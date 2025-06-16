@@ -17,6 +17,7 @@ import { Mail, Upload, Download, Users, Sparkles, Send, FileText, AlertCircle, S
 import { useAuthStore } from '@/store/slices/authStore'
 import { useContactsStore } from '@/store/slices/contactsStore'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import ZoomInfoUploader from '@/components/email/ZoomInfoUploader'
 
 interface EmailSettings {
   tone: 'Professional' | 'Consultative' | 'Direct' | 'Friendly' | 'Urgent'
@@ -363,9 +364,10 @@ export default function EmailPage() {
             </CardHeader>
             <CardContent>
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="upload">Upload CSV</TabsTrigger>
                   <TabsTrigger value="contacts">Existing Contacts</TabsTrigger>
+                  <TabsTrigger value="zoominfo">ZoomInfo + Gemini</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="upload" className="space-y-4">
@@ -482,24 +484,30 @@ export default function EmailPage() {
                     </div>
                   )}
                 </TabsContent>
+                
+                <TabsContent value="zoominfo" className="space-y-4">
+                  <ZoomInfoUploader />
+                </TabsContent>
               </Tabs>
 
-              <div className="mt-6 flex justify-end">
-                <Button 
-                  onClick={generateEmails}
-                  disabled={isGenerating || (activeTab === 'upload' ? csvData.length === 0 : selectedContactIds.length === 0)}
-                  className="gap-2"
-                >
-                  {isGenerating ? (
-                    <>Generating...</>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4" />
-                      Generate Emails
-                    </>
-                  )}
-                </Button>
-              </div>
+              {activeTab !== 'zoominfo' && (
+                <div className="mt-6 flex justify-end">
+                  <Button 
+                    onClick={generateEmails}
+                    disabled={isGenerating || (activeTab === 'upload' ? csvData.length === 0 : selectedContactIds.length === 0)}
+                    className="gap-2"
+                  >
+                    {isGenerating ? (
+                      <>Generating...</>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        Generate Emails
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 
