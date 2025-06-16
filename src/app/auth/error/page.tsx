@@ -38,10 +38,10 @@ export default function AuthErrorPage() {
             <AlertCircle className="h-6 w-6 text-red-600" />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {errorInfo.title}
+            {errorInfo?.title || 'Authentication Error'}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            {errorInfo.description}
+            {errorInfo?.description || 'An error occurred during authentication.'}
           </p>
         </div>
 
