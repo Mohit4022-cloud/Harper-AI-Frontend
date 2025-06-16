@@ -1,77 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { CalendarEventSchema } from '@/types/calendar'
 import { z } from 'zod'
-import { faker } from '@faker-js/faker'
-import { addHours, addDays, startOfDay, endOfDay } from 'date-fns'
-
-// In-memory storage for calendar events (replace with real DB in production)
-declare global {
-  let calendarEvents: any[]
-}
-
-if (!global.calendarEvents) {
-  // Generate mock events
-  global.calendarEvents = generateMockEvents()
-}
-
-/**
- * Generate mock calendar events
- */
-function generateMockEvents() {
-  const events = []
-  const today = new Date()
-  
-  // Generate events for the next 30 days
-  for (let i = 0; i < 30; i++) {
-    const date = addDays(today, i)
-    const numEvents = faker.number.int({ min: 0, max: 3 })
-    
-    for (let j = 0; j < numEvents; j++) {
-      const hour = faker.number.int({ min: 9, max: 17 })
-      const startTime = new Date(date.setHours(hour, 0, 0, 0))
-      const eventType = faker.helpers.arrayElement(['call', 'meeting', 'follow_up', 'reminder'])
-      
-      const event = {
-        id: `event_${i}_${j}_${Date.now()}`,
-        title: generateEventTitle(eventType),
-        description: faker.lorem.sentence(),
-        type: eventType,
-        startTime: startTime.toISOString(),
-        endTime: addHours(startTime, eventType === 'meeting' ? 1 : 0.5).toISOString(),
-        contactId: faker.string.uuid(),
-        contactName: faker.person.fullName(),
-        contactPhone: faker.phone.number({ style: 'international' }),
-        location: eventType === 'meeting' ? faker.location.streetAddress() : undefined,
-        isCompleted: i < 0, // Past events are completed
-        notes: faker.datatype.boolean() ? faker.lorem.paragraph() : undefined,
-        createdAt: faker.date.past().toISOString(),
-        updatedAt: faker.date.recent().toISOString(),
-      }
-      
-      events.push(event)
-    }
-  }
-  
-  return events
-}
-
-/**
- * Generate event title based on type
- */
-function generateEventTitle(type: string): string {
-  switch (type) {
-    case 'call':
-      return `Sales Call with ${faker.person.firstName()}`
-    case 'meeting':
-      return `Meeting: ${faker.company.catchPhrase()}`
-    case 'follow_up':
-      return `Follow-up: ${faker.commerce.product()}`
-    case 'reminder':
-      return `Reminder: ${faker.lorem.words(3)}`
-    default:
-      return faker.lorem.sentence()
-  }
-}
+import { 
+  getCalendarEvents, 
+  addCalendarEvent, 
+  checkTimeConflicts 
+} from '@/lib/calendar-storage'
 
 /**
  * GET /api/calendar/events
@@ -85,7 +19,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type')
     const contactId = searchParams.get('contactId')
     
-    let filteredEvents = [...global.calendarEvents]
+    let filteredEvents = [...getCalendarEvents()]
     
     // Apply date range filter
     if (startDate && endDate) {
@@ -147,20 +81,7 @@ export async function POST(request: NextRequest) {
     })
     
     // Check for time conflicts
-    const conflicts = global.calendarEvents.filter((event) => {
-      if (event.id === validatedData.id) return false
-      
-      const existingStart = new Date(event.startTime)
-      const existingEnd = new Date(event.endTime)
-      const newStart = new Date(validatedData.startTime)
-      const newEnd = new Date(validatedData.endTime)
-      
-      return (
-        (newStart >= existingStart && newStart < existingEnd) ||
-        (newEnd > existingStart && newEnd <= existingEnd) ||
-        (newStart <= existingStart && newEnd >= existingEnd)
-      )
-    })
+    const conflicts = checkTimeConflicts(validatedData, validatedData.id)
     
     if (conflicts.length > 0 && validatedData.type !== 'reminder') {
       return NextResponse.json(
@@ -174,7 +95,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Add to in-memory database
-    global.calendarEvents.push(validatedData)
+    addCalendarEvent(validatedData)
     
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 300))

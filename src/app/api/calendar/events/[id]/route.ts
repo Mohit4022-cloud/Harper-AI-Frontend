@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { CalendarEventSchema } from '@/types/calendar'
 import { z } from 'zod'
-
-// In-memory database reference (shared with /api/calendar/events/route.ts)
-declare global {
-  let calendarEvents: any[]
-}
-
-if (!global.calendarEvents) {
-  global.calendarEvents = []
-}
+import {
+  findCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent,
+  checkTimeConflicts,
+  getCalendarEvents
+} from '@/lib/calendar-storage'
 
 /**
  * GET /api/calendar/events/[id]
@@ -21,7 +19,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const event = global.calendarEvents.find((e) => e.id === id)
+    const event = findCalendarEvent(id)
     
     if (!event) {
       return NextResponse.json(
@@ -60,9 +58,9 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const eventIndex = global.calendarEvents.findIndex((e) => e.id === id)
+    const existingEvent = findCalendarEvent(id)
     
-    if (eventIndex === -1) {
+    if (!existingEvent) {
       return NextResponse.json(
         {
           success: false,
@@ -74,7 +72,7 @@ export async function PUT(
     
     // Validate update data
     const updateData = {
-      ...global.calendarEvents[eventIndex],
+      ...existingEvent,
       ...body,
       id: id, // Ensure ID cannot be changed
       updatedAt: new Date().toISOString(),
@@ -83,20 +81,7 @@ export async function PUT(
     const validatedData = CalendarEventSchema.parse(updateData)
     
     // Check for time conflicts (excluding current event)
-    const conflicts = global.calendarEvents.filter((event, index) => {
-      if (index === eventIndex) return false
-      
-      const existingStart = new Date(event.startTime)
-      const existingEnd = new Date(event.endTime)
-      const newStart = new Date(validatedData.startTime)
-      const newEnd = new Date(validatedData.endTime)
-      
-      return (
-        (newStart >= existingStart && newStart < existingEnd) ||
-        (newEnd > existingStart && newEnd <= existingEnd) ||
-        (newStart <= existingStart && newEnd >= existingEnd)
-      )
-    })
+    const conflicts = checkTimeConflicts(validatedData, id)
     
     if (conflicts.length > 0 && validatedData.type !== 'reminder') {
       return NextResponse.json(
@@ -110,7 +95,7 @@ export async function PUT(
     }
     
     // Update event
-    global.calendarEvents[eventIndex] = validatedData
+    updateCalendarEvent(id, validatedData)
     
     return NextResponse.json({
       success: true,
@@ -151,9 +136,9 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    const eventIndex = global.calendarEvents.findIndex((e) => e.id === id)
+    const deletedEvent = deleteCalendarEvent(id)
     
-    if (eventIndex === -1) {
+    if (!deletedEvent) {
       return NextResponse.json(
         {
           success: false,
@@ -162,9 +147,6 @@ export async function DELETE(
         { status: 404 }
       )
     }
-    
-    // Remove event
-    const deletedEvent = global.calendarEvents.splice(eventIndex, 1)[0]
     
     return NextResponse.json({
       success: true,
