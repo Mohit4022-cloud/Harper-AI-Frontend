@@ -13,23 +13,11 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/components/ui/use-toast'
 import { parseCSV, validateCSVStructure } from '@/lib/utils/csvParser'
-import { 
-  Mail, Upload, Download, Users, Sparkles, Send, FileText, AlertCircle, Search, TestTube,
-  RotateCcw, Save, HelpCircle, Eye, Shuffle, Copy, Filter, Plus, Calendar, BarChart3, FileDown 
-} from 'lucide-react'
+import { Mail, Upload, Download, Users, Sparkles, Send, FileText, AlertCircle, Search, TestTube } from 'lucide-react'
 import { useAuthStore } from '@/store/slices/authStore'
 import { useContactsStore } from '@/store/slices/contactsStore'
-import { useEmailStore } from '@/store/slices/emailStore'
-import { useEmailPresets } from '@/hooks/useEmailPresets'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import ZoomInfoUploader from '@/components/email/ZoomInfoUploader'
-import EmailSettingsPanel from '@/components/email/EmailSettingsPanel'
-import EmailPreview from '@/components/email/EmailPreview'
-import ContactFilters from '@/components/email/ContactFilters'
-import AddContactModal from '@/components/email/AddContactModal'
-import AnalyticsModal from '@/components/email/AnalyticsModal'
 import { faker } from '@faker-js/faker'
 
 interface EmailSettings {
@@ -59,50 +47,36 @@ export default function EmailPage() {
   const { user } = useAuthStore()
   const { toast } = useToast()
   const { contacts, loading, loadContacts } = useContactsStore()
-  const { settings: emailSettings, updateSettings, resetSettings } = useEmailStore()
-  const { savePreset, loadPreset, presets } = useEmailPresets()
-  
   const [activeTab, setActiveTab] = useState('upload')
   const [csvData, setCsvData] = useState<any[]>([])
-  const [csvErrors, setCsvErrors] = useState<any[]>([])
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([])
-  const [selectedCsvIndices, setSelectedCsvIndices] = useState<number[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedEmails, setGeneratedEmails] = useState<GeneratedEmail[]>([])
   const [errors, setErrors] = useState<string[]>([])
   const [contactSearch, setContactSearch] = useState('')
-  const [showAnalytics, setShowAnalytics] = useState(false)
-  const [helpOpen, setHelpOpen] = useState(false)
-  const [sendMode, setSendMode] = useState('now')
-  const [contactFilters, setContactFilters] = useState<any>({})
   
-  const [settings, setSettings] = useState<EmailSettings>(emailSettings)
+  const [settings, setSettings] = useState<EmailSettings>({
+    tone: 'Professional',
+    length: 'medium',
+    subjectStyle: 'benefit',
+    cta: '15-minute call',
+    focusAreas: ['pain-points'],
+    personalizationDepth: 3,
+    includeFeatures: ['company-news', 'industry-insights'],
+    customInstructions: ''
+  })
 
   // Load contacts on mount
   useEffect(() => {
     loadContacts()
   }, [loadContacts])
 
-  // Sync local settings with store
-  useEffect(() => {
-    updateSettings(settings)
-  }, [settings, updateSettings])
-
-  // Filter contacts based on search and filters
-  const filteredContacts = contacts.filter(contact => {
-    const matchesSearch = 
-      contact.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
-      contact.email.toLowerCase().includes(contactSearch.toLowerCase()) ||
-      (contact.company?.toLowerCase().includes(contactSearch.toLowerCase()) || false)
-    
-    const matchesFilters = Object.entries(contactFilters).every(([key, value]) => {
-      if (!value) return true
-      const contactValue = contact[key as keyof typeof contact]
-      return contactValue?.toString().toLowerCase().includes(value.toString().toLowerCase())
-    })
-    
-    return matchesSearch && matchesFilters
-  })
+  // Filter contacts based on search
+  const filteredContacts = contacts.filter(contact => 
+    contact.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
+    contact.email.toLowerCase().includes(contactSearch.toLowerCase()) ||
+    (contact.company?.toLowerCase().includes(contactSearch.toLowerCase()) || false)
+  )
 
   const toggleContactSelection = (contactId: string) => {
     setSelectedContactIds(prev => 
@@ -112,46 +86,11 @@ export default function EmailPage() {
     )
   }
 
-  const toggleCsvSelection = (index: number) => {
-    setSelectedCsvIndices(prev => 
-      prev.includes(index) 
-        ? prev.filter(i => i !== index)
-        : [...prev, index]
-    )
-  }
-
   const selectAllContacts = () => {
     if (selectedContactIds.length === filteredContacts.length) {
       setSelectedContactIds([])
     } else {
       setSelectedContactIds(filteredContacts.map(c => c.id))
-    }
-  }
-
-  const selectAllCsv = () => {
-    if (selectedCsvIndices.length === csvData.length) {
-      setSelectedCsvIndices([])
-    } else {
-      setSelectedCsvIndices(csvData.map((_, idx) => idx))
-    }
-  }
-
-  const handleReset = () => {
-    resetSettings()
-    setSettings(emailSettings)
-    setCsvData([])
-    setCsvErrors([])
-    setSelectedContactIds([])
-    setSelectedCsvIndices([])
-    setGeneratedEmails([])
-    toast({ title: "Reset Complete", description: "All settings and selections cleared" })
-  }
-
-  const handleSavePreset = async () => {
-    const name = prompt('Enter preset name:')
-    if (name) {
-      await savePreset(name, settings)
-      toast({ title: "Preset Saved", description: `Saved as "${name}"` })
     }
   }
 
@@ -194,17 +133,11 @@ export default function EmailPage() {
           description: validation.errors.join(', '),
           variant: "destructive"
         })
-        setCsvErrors(validation.errors.map((error, idx) => ({
-          row: idx + 1,
-          error,
-          data: {}
-        })))
         return
       }
 
       const contacts = await parseCSV(text)
       setCsvData(contacts)
-      setCsvErrors([])
       toast({
         title: "CSV Uploaded",
         description: `${contacts.length} contacts loaded successfully`
@@ -215,47 +148,6 @@ export default function EmailPage() {
         description: error instanceof Error ? error.message : 'Failed to parse CSV',
         variant: "destructive"
       })
-    }
-  }
-
-  const hasSelectedContacts = () => {
-    if (activeTab === 'upload') return selectedCsvIndices.length > 0
-    if (activeTab === 'contacts') return selectedContactIds.length > 0
-    return false
-  }
-
-  const generateSingleEmail = async (contact: any) => {
-    setIsGenerating(true)
-    try {
-      const response = await fetch('/api/email/personalize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.email}`
-        },
-        body: JSON.stringify({
-          csvData: [contact],
-          settings,
-          enableEnrichment: settings.includeFeatures.includes('company-news')
-        })
-      })
-
-      const data = await response.json()
-      if (data.success && data.results.length > 0) {
-        setGeneratedEmails(prev => [...prev, ...data.results])
-        toast({
-          title: "Email Generated",
-          description: `Personalized email created for ${contact.name}`
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "Generation Failed",
-        description: "Failed to generate email for this contact",
-        variant: "destructive"
-      })
-    } finally {
-      setIsGenerating(false)
     }
   }
 
@@ -273,14 +165,17 @@ export default function EmailPage() {
     setErrors([])
 
     try {
-      // Get selected contacts based on active tab
-      let contactsToProcess = []
-      
-      if (activeTab === 'upload') {
-        contactsToProcess = csvData.filter((_, idx) => selectedCsvIndices.includes(idx))
-      } else if (activeTab === 'contacts') {
-        contactsToProcess = contacts.filter(c => selectedContactIds.includes(c.id))
-      }
+      // Get selected contacts data if using existing contacts
+      const selectedContactsData = activeTab === 'contacts' 
+        ? contacts.filter(c => selectedContactIds.includes(c.id)).map(c => ({
+            name: c.name,
+            email: c.email,
+            company: c.company || '',
+            title: c.title || '',
+            industry: c.industry || '',
+            phone: c.phone
+          }))
+        : undefined
 
       const response = await fetch('/api/email/personalize', {
         method: 'POST',
@@ -289,12 +184,17 @@ export default function EmailPage() {
           'Authorization': `Bearer ${user.email}`
         },
         body: JSON.stringify({
-          csvData: contactsToProcess,
+          contactIds: activeTab === 'contacts' ? selectedContactIds : undefined,
+          contactsData: activeTab === 'contacts' ? selectedContactsData : undefined,
+          csvData: activeTab === 'upload' ? csvData : undefined,
           settings,
-          enableEnrichment: settings.includeFeatures.includes('company-news'),
-          sendMode
+          enableEnrichment: settings.includeFeatures.includes('company-news')
         })
       })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate emails')
+      }
 
       const data = await response.json()
       
@@ -307,9 +207,6 @@ export default function EmailPage() {
           title: "Emails Generated",
           description: `Successfully generated ${data.results.length} personalized emails`
         })
-        
-        // Show analytics after generation
-        setShowAnalytics(true)
       }
     } catch (error) {
       toast({
@@ -319,74 +216,6 @@ export default function EmailPage() {
       })
     } finally {
       setIsGenerating(false)
-    }
-  }
-
-  const downloadTemplate = () => {
-    const template = 'name,email,company,title,industry,website,linkedinUrl\n' +
-      '"John Doe","john@example.com","Acme Corp","VP Sales","SaaS","https://acme.com","https://linkedin.com/in/johndoe"'
-    
-    const blob = new Blob([template], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'email-contacts-template.csv'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
-
-  const downloadErrors = () => {
-    const errorCsv = [
-      ['row', 'error', 'name', 'email', 'company'].join(','),
-      ...csvErrors.map(err => [
-        err.row,
-        err.error,
-        err.data.name || '',
-        err.data.email || '',
-        err.data.company || ''
-      ].join(','))
-    ].join('\n')
-    
-    const blob = new Blob([errorCsv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'csv-errors.csv'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
-
-  const exportToCRM = async () => {
-    try {
-      const response = await fetch('/api/integrations/crm/export', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.email}`
-        },
-        body: JSON.stringify({
-          emails: generatedEmails,
-          crmType: 'hubspot', // or from user settings
-          campaignName: `Email Campaign ${new Date().toISOString()}`
-        })
-      })
-
-      if (response.ok) {
-        toast({
-          title: "Export Successful",
-          description: "Emails exported to CRM"
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "Export Failed",
-        description: "Failed to export to CRM",
-        variant: "destructive"
-      })
     }
   }
 
@@ -416,89 +245,139 @@ export default function EmailPage() {
     URL.revokeObjectURL(url)
   }
 
-  const handleAddContact = (contact: any) => {
-    setCsvData(prev => [...prev, contact])
-  }
-
-  const getPreviewContact = () => {
-    if (activeTab === 'upload' && csvData.length > 0) {
-      return csvData[0]
-    }
-    if (activeTab === 'contacts' && filteredContacts.length > 0) {
-      return filteredContacts[0]
-    }
-    return null
-  }
-
   return (
     <div className="container mx-auto p-6 max-w-7xl">
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-gray-100">AI Email Personalization</h1>
-          <p className="text-muted-foreground">Generate hyper-personalized cold emails at scale</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleReset}>
-            <RotateCcw className="h-4 w-4 mr-1" />
-            Reset
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleSavePreset}>
-            <Save className="h-4 w-4 mr-1" />
-            Save Preset
-          </Button>
-          <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <HelpCircle className="h-4 w-4 mr-1" />
-                Help
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Email Generation Guide</DialogTitle>
-              </DialogHeader>
-              <div className="mt-4 space-y-4">
-                <div>
-                  <h4 className="font-semibold">CSV Format</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Required columns: name, email, company, title
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Optional: industry, website, linkedinUrl, phone
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-semibold">Best Practices</h4>
-                  <ul className="text-sm text-muted-foreground list-disc pl-5">
-                    <li>Use professional tone for B2B outreach</li>
-                    <li>Keep emails under 150 words</li>
-                    <li>Include specific company pain points</li>
-                    <li>Personalize with recent company news</li>
-                    <li>End with a clear call-to-action</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-semibold">Keyboard Shortcuts</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li><kbd>Ctrl+R</kbd> - Reset page</li>
-                    <li><kbd>Ctrl+S</kbd> - Save preset</li>
-                    <li><kbd>Ctrl+G</kbd> - Generate emails</li>
-                  </ul>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-gray-100">AI Email Personalization</h1>
+        <p className="text-muted-foreground">Generate hyper-personalized cold emails at scale</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Settings Panel */}
         <div className="lg:col-span-1">
-          <EmailSettingsPanel
-            settings={settings}
-            onSettingsChange={setSettings}
-            previewContact={getPreviewContact()}
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle>Email Settings</CardTitle>
+              <CardDescription>Configure your email generation preferences</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Tone</Label>
+                <Select 
+                  value={settings.tone} 
+                  onValueChange={(value) => setSettings({...settings, tone: value as any})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Professional">Professional</SelectItem>
+                    <SelectItem value="Consultative">Consultative</SelectItem>
+                    <SelectItem value="Direct">Direct</SelectItem>
+                    <SelectItem value="Friendly">Friendly</SelectItem>
+                    <SelectItem value="Urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Length</Label>
+                <Select 
+                  value={settings.length} 
+                  onValueChange={(value) => setSettings({...settings, length: value as any})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="short">Short (Under 100 words)</SelectItem>
+                    <SelectItem value="medium">Medium (100-150 words)</SelectItem>
+                    <SelectItem value="long">Long (150-200 words)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Subject Style</Label>
+                <Select 
+                  value={settings.subjectStyle} 
+                  onValueChange={(value) => setSettings({...settings, subjectStyle: value as any})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="question">Question</SelectItem>
+                    <SelectItem value="benefit">Benefit-focused</SelectItem>
+                    <SelectItem value="company-specific">Company-specific</SelectItem>
+                    <SelectItem value="statistic">Statistic/Data</SelectItem>
+                    <SelectItem value="personal">Personal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Call to Action</Label>
+                <Input 
+                  value={settings.cta}
+                  onChange={(e) => setSettings({...settings, cta: e.target.value})}
+                  placeholder="e.g., 15-minute call"
+                />
+              </div>
+
+              <div>
+                <Label>Focus Areas</Label>
+                <div className="space-y-2 mt-2">
+                  {['pain-points', 'benefits', 'social-proof', 'urgency'].map(area => (
+                    <div key={area} className="flex items-center space-x-2">
+                      <Checkbox 
+                        checked={settings.focusAreas.includes(area)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSettings({...settings, focusAreas: [...settings.focusAreas, area]})
+                          } else {
+                            setSettings({...settings, focusAreas: settings.focusAreas.filter(a => a !== area)})
+                          }
+                        }}
+                      />
+                      <Label className="capitalize">{area.replace('-', ' ')}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <Label>Include Features</Label>
+                <div className="space-y-2 mt-2">
+                  {['company-news', 'industry-insights', 'role-challenges'].map(feature => (
+                    <div key={feature} className="flex items-center space-x-2">
+                      <Checkbox 
+                        checked={settings.includeFeatures.includes(feature)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSettings({...settings, includeFeatures: [...settings.includeFeatures, feature]})
+                          } else {
+                            setSettings({...settings, includeFeatures: settings.includeFeatures.filter(f => f !== feature)})
+                          }
+                        }}
+                      />
+                      <Label className="capitalize">{feature.replace('-', ' ')}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <Label>Custom Instructions</Label>
+                <Textarea 
+                  value={settings.customInstructions}
+                  onChange={(e) => setSettings({...settings, customInstructions: e.target.value})}
+                  placeholder="Add any specific requirements..."
+                  rows={3}
+                />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Main Content Area */}
@@ -518,22 +397,6 @@ export default function EmailPage() {
                 </TabsList>
                 
                 <TabsContent value="upload" className="space-y-4">
-                  {csvErrors.length > 0 && (
-                    <div className="flex justify-between items-center p-3 bg-destructive/10 rounded-lg">
-                      <span className="text-sm text-destructive">
-                        {csvErrors.length} rows failed validation
-                      </span>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={downloadErrors}
-                      >
-                        <Download className="h-4 w-4 mr-1" />
-                        Download Errors
-                      </Button>
-                    </div>
-                  )}
-                  
                   <div className="border-2 border-dashed rounded-lg p-8 text-center">
                     <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                     <Label htmlFor="csv-upload" className="cursor-pointer">
@@ -560,15 +423,6 @@ export default function EmailPage() {
                         <TestTube className="h-4 w-4" />
                         Generate Test Data
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={downloadTemplate}
-                        className="gap-2"
-                      >
-                        <FileDown className="h-4 w-4" />
-                        Template CSV
-                      </Button>
                     </div>
                   </div>
                   
@@ -576,73 +430,25 @@ export default function EmailPage() {
                     <div className="mt-4">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium">Loaded Contacts</span>
-                        <div className="flex gap-2 items-center">
-                          <Badge>{selectedCsvIndices.length} selected</Badge>
-                          <Badge variant="outline">{csvData.length} total</Badge>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={selectAllCsv}
-                          >
-                            {selectedCsvIndices.length === csvData.length ? 'Deselect All' : 'Select All'}
-                          </Button>
-                        </div>
+                        <Badge>{csvData.length} contacts</Badge>
                       </div>
-                      <ScrollArea className="h-64 border rounded-lg">
-                        <div className="p-2 space-y-1">
-                          {csvData.map((contact, idx) => (
-                            <div 
-                              key={idx}
-                              className="flex items-center space-x-3 p-2 hover:bg-muted rounded cursor-pointer"
-                              onClick={() => toggleCsvSelection(idx)}
-                            >
-                              <Checkbox 
-                                checked={selectedCsvIndices.includes(idx)}
-                                onCheckedChange={() => toggleCsvSelection(idx)}
-                              />
-                              <div className="flex-1">
-                                <p className="font-medium text-sm">{contact.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {contact.email} • {contact.company} • {contact.title || 'No title'}
-                                </p>
-                              </div>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  generateSingleEmail(contact)
-                                }}
-                                disabled={isGenerating}
-                              >
-                                <Sparkles className="h-3 w-3 mr-1" />
-                                Generate
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
+                      <div className="max-h-48 overflow-y-auto border rounded p-2 space-y-1">
+                        {csvData.slice(0, 5).map((contact, idx) => (
+                          <div key={idx} className="text-sm">
+                            {contact.name || `${contact.firstName} ${contact.lastName}`} - {contact.email}
+                          </div>
+                        ))}
+                        {csvData.length > 5 && (
+                          <div className="text-sm text-muted-foreground">
+                            ... and {csvData.length - 5} more
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </TabsContent>
                 
                 <TabsContent value="contacts" className="space-y-4">
-                  <div className="flex gap-2">
-                    <ContactFilters 
-                      onFilterChange={setContactFilters}
-                      className="flex-1"
-                    />
-                    <AddContactModal 
-                      onAdd={handleAddContact}
-                      trigger={
-                        <Button variant="outline" size="sm">
-                          <Plus className="h-4 w-4 mr-1" />
-                          Add Contact
-                        </Button>
-                      }
-                    />
-                  </div>
-
                   {/* Search Bar */}
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -701,7 +507,7 @@ export default function EmailPage() {
                               <div className="flex-1">
                                 <p className="font-medium text-sm">{contact.name}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  {contact.email} • {contact.company || 'No company'} • {contact.title || 'No title'}
+                                  {contact.email} • {contact.company || 'No company'}
                                 </p>
                               </div>
                               {contact.leadScore && (
@@ -709,18 +515,6 @@ export default function EmailPage() {
                                   Score: {contact.leadScore}
                                 </Badge>
                               )}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  generateSingleEmail(contact)
-                                }}
-                                disabled={isGenerating}
-                              >
-                                <Sparkles className="h-3 w-3 mr-1" />
-                                Generate
-                              </Button>
                             </div>
                           ))}
                         </div>
@@ -735,23 +529,10 @@ export default function EmailPage() {
               </Tabs>
 
               {activeTab !== 'zoominfo' && (
-                <div className="mt-6 flex justify-between">
-                  <div className="flex gap-2">
-                    <Select value={sendMode} onValueChange={setSendMode}>
-                      <SelectTrigger className="w-[180px]">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="now">Send Now</SelectItem>
-                        <SelectItem value="schedule">Schedule in Outreach</SelectItem>
-                        <SelectItem value="sfdc">Schedule in Salesforce</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="mt-6 flex justify-end">
                   <Button 
                     onClick={generateEmails}
-                    disabled={isGenerating || !hasSelectedContacts()}
+                    disabled={isGenerating || (activeTab === 'upload' ? csvData.length === 0 : selectedContactIds.length === 0)}
                     className="gap-2"
                   >
                     {isGenerating ? (
@@ -777,20 +558,10 @@ export default function EmailPage() {
                     <CardTitle>Generated Emails</CardTitle>
                     <CardDescription>Review and export your personalized emails</CardDescription>
                   </div>
-                  <div className="flex gap-2">
-                    <Button onClick={exportToCRM} variant="outline" className="gap-2">
-                      <Upload className="h-4 w-4" />
-                      Export to CRM
-                    </Button>
-                    <Button onClick={() => setShowAnalytics(true)} variant="outline" className="gap-2">
-                      <BarChart3 className="h-4 w-4" />
-                      Analytics
-                    </Button>
-                    <Button onClick={exportEmails} variant="outline" className="gap-2">
-                      <Download className="h-4 w-4" />
-                      Export CSV
-                    </Button>
-                  </div>
+                  <Button onClick={exportEmails} variant="outline" className="gap-2">
+                    <Download className="h-4 w-4" />
+                    Export CSV
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -858,13 +629,6 @@ export default function EmailPage() {
           )}
         </div>
       </div>
-
-      {/* Analytics Modal */}
-      <AnalyticsModal 
-        emails={generatedEmails}
-        open={showAnalytics}
-        onOpenChange={setShowAnalytics}
-      />
     </div>
   )
 }
