@@ -98,7 +98,7 @@ export default function ZoomInfoUploader() {
             setIsProcessing(false)
           }
         },
-        error: (error) => {
+        error: (error: Error) => {
           setError(`CSV parsing error: ${error.message}`)
           setIsProcessing(false)
         }
