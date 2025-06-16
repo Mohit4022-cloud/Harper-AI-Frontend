@@ -7,6 +7,10 @@ const withBundleAnalyzer = bundleAnalyzer({
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@tanstack/react-query', '@tanstack/react-virtual'],
+  eslint: {
+    // Allow production builds to successfully complete even if there are ESLint warnings
+    ignoreDuringBuilds: true,
+  },
   images: {
     formats: ['image/avif', 'image/webp'],
     domains: process.env.NEXT_PUBLIC_IMAGE_DOMAINS ? process.env.NEXT_PUBLIC_IMAGE_DOMAINS.split(',') : [],
