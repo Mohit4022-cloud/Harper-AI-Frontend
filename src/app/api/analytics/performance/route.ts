@@ -18,32 +18,85 @@ const metricsStore: any[] = []
 
 export async function POST(request: NextRequest) {
   try {
+    const contentType = request.headers.get('content-type')
     const body = await request.json()
     
-    // Validate the metric data
-    const metric = performanceMetricSchema.parse(body)
-    
-    // Store the metric (in production, save to database)
-    metricsStore.push({
-      ...metric,
-      receivedAt: Date.now(),
-      ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
-    })
-    
-    // Keep only last 1000 metrics in memory
-    if (metricsStore.length > 1000) {
-      metricsStore.shift()
+    // Check if it's a batch request
+    if (request.url.endsWith('/batch')) {
+      // Handle batch metrics
+      if (!Array.isArray(body)) {
+        return NextResponse.json(
+          { error: 'Batch endpoint expects an array of metrics' },
+          { status: 400 }
+        )
+      }
+      
+      const validMetrics = []
+      for (const metricData of body) {
+        try {
+          const metric = performanceMetricSchema.parse(metricData)
+          validMetrics.push(metric)
+        } catch (error) {
+          console.warn('Skipping invalid metric in batch:', error)
+        }
+      }
+      
+      // Process valid metrics
+      const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+      validMetrics.forEach(metric => {
+        metricsStore.push({
+          ...metric,
+          receivedAt: Date.now(),
+          ip,
+        })
+        
+        // Process alerts for critical metrics
+        if (metric.rating === 'poor' || metric.name === 'memory-usage' && metric.value > 100) {
+          processMetricAlerts(metric)
+        }
+      })
+      
+      // Keep only last 1000 metrics in memory
+      while (metricsStore.length > 1000) {
+        metricsStore.shift()
+      }
+      
+      // Send to external analytics if configured (batch)
+      if (process.env.ANALYTICS_ENDPOINT && validMetrics.length > 0) {
+        sendToExternalAnalytics({ type: 'batch', metrics: validMetrics })
+      }
+      
+      return NextResponse.json({ 
+        success: true, 
+        processed: validMetrics.length,
+        total: body.length 
+      })
+    } else {
+      // Handle single metric
+      const metric = performanceMetricSchema.parse(body)
+      
+      // Store the metric (in production, save to database)
+      metricsStore.push({
+        ...metric,
+        receivedAt: Date.now(),
+        ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+      })
+      
+      // Keep only last 1000 metrics in memory
+      if (metricsStore.length > 1000) {
+        metricsStore.shift()
+      }
+      
+      // Process metric for alerts
+      processMetricAlerts(metric)
+      
+      // Send to external analytics if configured
+      if (process.env.ANALYTICS_ENDPOINT) {
+        sendToExternalAnalytics(metric)
+      }
+      
+      return NextResponse.json({ success: true })
     }
-    
-    // Process metric for alerts
-    processMetricAlerts(metric)
-    
-    // Send to external analytics if configured
-    if (process.env.ANALYTICS_ENDPOINT) {
-      sendToExternalAnalytics(metric)
-    }
-    
-    return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Failed to process performance metric:', error)
     return NextResponse.json(

@@ -9,8 +9,18 @@ export async function registerServiceWorker() {
   }
 
   try {
+    // Wait for the window to load before registering
+    await new Promise((resolve) => {
+      if (document.readyState === 'complete') {
+        resolve(true)
+      } else {
+        window.addEventListener('load', () => resolve(true))
+      }
+    })
+
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
+      updateViaCache: 'none',
     })
 
     console.log('Service Worker registered successfully:', registration.scope)

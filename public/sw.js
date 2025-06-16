@@ -26,7 +26,13 @@ self.addEventListener('install', (event) => {
       caches.open(STATIC_CACHE).then((cache) => cache.addAll(staticAssets))
     ])
   )
-  self.skipWaiting()
+})
+
+// Listen for skip waiting message
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting()
+  }
 })
 
 // Activate event

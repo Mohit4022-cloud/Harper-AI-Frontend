@@ -13,18 +13,38 @@ interface Metric {
 class PerformanceMonitor {
   private metrics: Map<string, Metric> = new Map()
   private isEnabled: boolean = true
+  private lastSentTimestamp: number = 0
+  private sendQueue: Metric[] = []
+  private sendInterval: number = 5000 // Send metrics every 5 seconds max
+  private maxQueueSize: number = 50
+  private batchTimer: NodeJS.Timeout | null = null
   
   constructor() {
     if (typeof window !== 'undefined') {
       this.initWebVitals()
       this.initCustomMetrics()
+      this.initBatchSending()
+    }
+  }
+  
+  private initBatchSending() {
+    // Send queued metrics periodically
+    this.batchTimer = setInterval(() => {
+      this.flushQueue()
+    }, this.sendInterval)
+    
+    // Send on page unload
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', () => {
+        this.flushQueue(true)
+      })
     }
   }
   
   private initWebVitals() {
     const sendMetric = (metric: Metric) => {
       this.metrics.set(metric.name, metric)
-      this.sendToAnalytics(metric)
+      this.queueMetric(metric)
     }
     
     onCLS(sendMetric)
@@ -55,7 +75,7 @@ class PerformanceMonitor {
     const observer = new PerformanceObserver((list) => {
       list.getEntries().forEach((entry) => {
         if (entry.name.includes('⚛️')) {
-          this.sendToAnalytics({
+          this.queueMetric({
             name: 'react-render',
             value: entry.duration,
             id: entry.name,
@@ -73,7 +93,7 @@ class PerformanceMonitor {
     const observer = new PerformanceObserver((list) => {
       list.getEntries().forEach((entry) => {
         if (entry.name.includes('/api/')) {
-          this.sendToAnalytics({
+          this.queueMetric({
             name: 'api-call',
             value: entry.duration,
             id: entry.name,
@@ -97,7 +117,7 @@ class PerformanceMonitor {
       if (currentTime >= lastTime + 1000) {
         const fps = Math.round((frameCount * 1000) / (currentTime - lastTime))
         
-        this.sendToAnalytics({
+        this.queueMetric({
           name: 'virtual-scroll-fps',
           value: fps,
           id: 'virtual-table',
@@ -120,7 +140,7 @@ class PerformanceMonitor {
     setInterval(() => {
       const memInfo = (performance as any).memory
       
-      this.sendToAnalytics({
+      this.queueMetric({
         name: 'memory-usage',
         value: memInfo.usedJSHeapSize / 1024 / 1024, // MB
         id: 'heap-size',
@@ -129,25 +149,78 @@ class PerformanceMonitor {
     }, 30000) // Every 30 seconds
   }
   
-  public sendToAnalytics(metric: Metric) {
-    if (!this.isEnabled || typeof window === 'undefined') return
+  private queueMetric(metric: Metric) {
+    if (!this.isEnabled) return
     
-    // Send to your analytics service
-    fetch('/api/analytics/performance', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...metric,
-        timestamp: Date.now(),
-        url: window.location.pathname,
-        userAgent: navigator.userAgent,
-      }),
-    }).catch(console.error)
+    this.sendQueue.push(metric)
+    
+    // Flush if queue is getting too large
+    if (this.sendQueue.length >= this.maxQueueSize) {
+      this.flushQueue()
+    }
+  }
+  
+  private flushQueue(immediate: boolean = false) {
+    if (this.sendQueue.length === 0) return
+    
+    // Rate limiting: Don't send more than once per second unless immediate
+    const now = Date.now()
+    if (!immediate && now - this.lastSentTimestamp < 1000) {
+      return
+    }
+    
+    // Take current queue and clear it
+    const metricsToSend = [...this.sendQueue]
+    this.sendQueue = []
+    this.lastSentTimestamp = now
+    
+    // Send batch
+    this.sendBatch(metricsToSend)
+  }
+  
+  private sendBatch(metrics: Metric[]) {
+    if (typeof window === 'undefined') return
+    
+    const payload = metrics.map(metric => ({
+      ...metric,
+      timestamp: Date.now(),
+      url: window.location.pathname,
+      userAgent: navigator.userAgent,
+    }))
+    
+    // Use sendBeacon for reliability on page unload
+    const useBeacon = 'sendBeacon' in navigator && document.visibilityState === 'hidden'
+    
+    if (useBeacon) {
+      navigator.sendBeacon(
+        '/api/analytics/performance/batch',
+        JSON.stringify(payload)
+      )
+    } else {
+      fetch('/api/analytics/performance/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(error => {
+        console.error('Failed to send metrics batch:', error)
+        // Re-queue failed metrics if not too old
+        const recentMetrics = metrics.filter(m => 
+          Date.now() - (m as any).timestamp < 60000 // Less than 1 minute old
+        )
+        if (recentMetrics.length > 0) {
+          this.sendQueue.unshift(...recentMetrics)
+        }
+      })
+    }
     
     // Log in development
     if (process.env.NODE_ENV === 'development') {
-      console.log(`📊 ${metric.name}:`, metric.value, metric.rating)
+      console.log(`📊 Sent ${metrics.length} metrics`)
     }
+  }
+  
+  public sendToAnalytics(metric: Metric) {
+    this.queueMetric(metric)
   }
   
   // Public methods
@@ -164,7 +237,7 @@ class PerformanceMonitor {
       
       const measure = performance.getEntriesByName(measureName)[0]
       if (measure && 'duration' in measure) {
-        this.sendToAnalytics({
+        this.queueMetric({
           name: 'api-duration',
           value: measure.duration,
           id: name,
@@ -191,10 +264,26 @@ class PerformanceMonitor {
   
   disable() {
     this.isEnabled = false
+    // Clear batch timer
+    if (this.batchTimer) {
+      clearInterval(this.batchTimer)
+      this.batchTimer = null
+    }
+    // Flush any remaining metrics
+    this.flushQueue(true)
   }
   
   enable() {
     this.isEnabled = true
+    if (!this.batchTimer) {
+      this.initBatchSending()
+    }
+  }
+  
+  cleanup() {
+    this.disable()
+    this.metrics.clear()
+    this.sendQueue = []
   }
 }
 
@@ -250,7 +339,7 @@ export function initPerformanceMonitoring() {
       const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
       
       if (performanceMonitor) {
-        performanceMonitor.sendToAnalytics({
+        performanceMonitor.queueMetric({
           name: 'page-load',
           value: navigation.loadEventEnd - navigation.fetchStart,
           id: window.location.pathname,

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 
 // Simple in-memory rate limiter (use Redis in production)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
@@ -29,21 +30,43 @@ function checkRateLimit(key: string): boolean {
   return true
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
+  // Check authentication for protected routes
+  const protectedPaths = ['/dashboard', '/contacts', '/calling', '/reports', '/settings']
+  const isProtectedPath = protectedPaths.some(path => 
+    request.nextUrl.pathname.startsWith(path)
+  )
+  
+  if (isProtectedPath) {
+    const token = await getToken({ 
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET 
+    })
+    
+    if (!token) {
+      const signInUrl = new URL('/auth/signin', request.url)
+      signInUrl.searchParams.set('callbackUrl', request.nextUrl.pathname)
+      return NextResponse.redirect(signInUrl)
+    }
+  }
+  
   // Only apply rate limiting to API routes
   if (request.nextUrl.pathname.startsWith('/api/')) {
-    const rateLimitKey = getRateLimitKey(request)
-    
-    if (!checkRateLimit(rateLimitKey)) {
-      return new NextResponse('Too Many Requests', {
-        status: 429,
-        headers: {
-          'Retry-After': '60',
-          'X-RateLimit-Limit': RATE_LIMIT_MAX_REQUESTS.toString(),
-          'X-RateLimit-Remaining': '0',
-          'X-RateLimit-Reset': new Date(Date.now() + RATE_LIMIT_WINDOW).toISOString(),
-        },
-      })
+    // Skip rate limiting for auth routes
+    if (!request.nextUrl.pathname.startsWith('/api/auth/')) {
+      const rateLimitKey = getRateLimitKey(request)
+      
+      if (!checkRateLimit(rateLimitKey)) {
+        return new NextResponse('Too Many Requests', {
+          status: 429,
+          headers: {
+            'Retry-After': '60',
+            'X-RateLimit-Limit': RATE_LIMIT_MAX_REQUESTS.toString(),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': new Date(Date.now() + RATE_LIMIT_WINDOW).toISOString(),
+          },
+        })
+      }
     }
   }
 
