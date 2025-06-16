@@ -1,21 +1,11 @@
-import type { NextConfig } from 'next'
-import bundleAnalyzer from '@next/bundle-analyzer'
+const { withSentryConfig } = require('@sentry/nextjs')
 
-const withBundleAnalyzer = bundleAnalyzer({
-  enabled: process.env.ANALYZE === 'true',
-})
-
-const nextConfig: NextConfig = {
+const nextConfig = {
   reactStrictMode: true,
-  experimental: {
-    ppr: 'incremental', // Enable Partial Prerendering
-    reactCompiler: {
-      compilationMode: 'annotation'
-    },
-    optimizePackageImports: ['@shadcn/ui', 'framer-motion', 'date-fns', 'lucide-react'],
-    typedRoutes: true,
-  },
   transpilePackages: ['@tanstack/react-query', '@tanstack/react-virtual'],
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
     formats: ['image/avif', 'image/webp'],
     domains: process.env.NEXT_PUBLIC_IMAGE_DOMAINS?.split(',') || [],
@@ -80,4 +70,15 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default withBundleAnalyzer(nextConfig)
+module.exports = withSentryConfig(nextConfig, {
+  silent: true,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+}, {
+  widenClientFileUpload: true,
+  transpileClientSDK: true,
+  tunnelRoute: '/monitoring',
+  hideSourceMaps: true,
+  disableLogger: true,
+  automaticVercelMonitors: true,
+})

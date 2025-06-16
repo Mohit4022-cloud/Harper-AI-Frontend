@@ -1,0 +1,3 @@
+# Ensure node_modules and .next are ignored
+node_modules/
+.next/
