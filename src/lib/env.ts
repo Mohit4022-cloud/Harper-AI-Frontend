@@ -63,9 +63,9 @@ export function validateEnv() {
       if (process.env.NODE_ENV === 'test') {
         return {
           server: {
+            ...process.env,
             NODE_ENV: 'test',
             JWT_SECRET: 'test-secret-for-testing-only-not-for-production',
-            ...process.env,
           },
           client: {},
         };
