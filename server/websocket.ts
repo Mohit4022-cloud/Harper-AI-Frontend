@@ -65,7 +65,9 @@ io.use(async (socket, next) => {
     // Verify JWT token
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string; teamId?: string }
     socket.data.userId = decoded.userId
-    socket.data.teamId = decoded.teamId
+    if (decoded.teamId) {
+      socket.data.teamId = decoded.teamId
+    }
     
     next()
   } catch (err) {
