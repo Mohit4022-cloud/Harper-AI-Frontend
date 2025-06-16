@@ -28,14 +28,8 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Clean up orphaned team members
-    const orphanedMembers = await prisma.teamMember.deleteMany({
-      where: {
-        user: {
-          is: null,
-        },
-      },
-    })
+    // Note: TeamMember records are automatically cleaned up via onDelete: Cascade
+    // when users are deleted, so no need for manual cleanup
 
     // Update metrics for inactive users
     await prisma.user.updateMany({
@@ -56,7 +50,6 @@ export async function GET(request: NextRequest) {
       cleaned: {
         sessions: sessionsDeleted.count,
         activities: activitiesDeleted.count,
-        orphanedMembers: orphanedMembers.count,
       },
     })
   } catch (error) {

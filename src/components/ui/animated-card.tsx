@@ -29,8 +29,8 @@ export function AnimatedCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      whileHover={hoverable ? { scale: 1.02 } : undefined}
-      whileTap={clickable ? { scale: 0.98 } : undefined}
+      whileHover={hoverable ? { scale: 1.02 } : {}}
+      whileTap={clickable ? { scale: 0.98 } : {}}
       transition={{
         type: 'spring',
         stiffness: 300,

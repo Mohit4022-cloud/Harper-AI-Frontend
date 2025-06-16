@@ -54,63 +54,85 @@ export const createRealtimeSlice: StateCreator<RealtimeSlice, [], [], RealtimeSl
   pendingOperations: [],
   
   // Actions
-  setConnectionStatus: (status) => set((state) => {
-    state.connectionStatus = status
-    state.isConnected = status === 'connected'
-  }),
+  setConnectionStatus: (status) => set((state) => ({
+    ...state,
+    connectionStatus: status,
+    isConnected: status === 'connected'
+  })),
   
-  setConnected: (connected) => set((state) => {
-    state.isConnected = connected
-    state.connectionStatus = connected ? 'connected' : 'disconnected'
-  }),
+  setConnected: (connected) => set((state) => ({
+    ...state,
+    isConnected: connected,
+    connectionStatus: connected ? 'connected' : 'disconnected'
+  })),
   
-  updateLastSyncTime: () => set((state) => {
-    state.lastSyncTime = new Date()
-  }),
+  updateLastSyncTime: () => set((state) => ({
+    ...state,
+    lastSyncTime: new Date()
+  })),
   
-  incrementReconnectAttempts: () => set((state) => {
-    state.reconnectAttempts += 1
-  }),
+  incrementReconnectAttempts: () => set((state) => ({
+    ...state,
+    reconnectAttempts: state.reconnectAttempts + 1
+  })),
   
-  resetReconnectAttempts: () => set((state) => {
-    state.reconnectAttempts = 0
-  }),
+  resetReconnectAttempts: () => set((state) => ({
+    ...state,
+    reconnectAttempts: 0
+  })),
   
   addActiveUser: (userId) => set((state) => {
-    state.activeUsers.add(userId)
-  }),
-  
-  removeActiveUser: (userId) => set((state) => {
-    state.activeUsers.delete(userId)
-  }),
-  
-  setActiveUsers: (userIds) => set((state) => {
-    state.activeUsers = new Set(userIds)
-  }),
-  
-  queueOperation: (operation) => set((state) => {
-    state.pendingOperations.push({
-      ...operation,
-      id: `op_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: new Date(),
-      retries: 0,
-    })
-  }),
-  
-  removeOperation: (id) => set((state) => {
-    state.pendingOperations = state.pendingOperations.filter(op => op.id !== id)
-  }),
-  
-  incrementOperationRetries: (id) => set((state) => {
-    const operation = state.pendingOperations.find(op => op.id === id)
-    if (operation) {
-      operation.retries += 1
+    const newActiveUsers = new Set(state.activeUsers)
+    newActiveUsers.add(userId)
+    return {
+      ...state,
+      activeUsers: newActiveUsers
     }
   }),
   
-  clearOperationQueue: () => set((state) => {
-    state.pendingOperations = []
+  removeActiveUser: (userId) => set((state) => {
+    const newActiveUsers = new Set(state.activeUsers)
+    newActiveUsers.delete(userId)
+    return {
+      ...state,
+      activeUsers: newActiveUsers
+    }
   }),
+  
+  setActiveUsers: (userIds) => set((state) => ({
+    ...state,
+    activeUsers: new Set(userIds)
+  })),
+  
+  queueOperation: (operation) => set((state) => ({
+    ...state,
+    pendingOperations: [
+      ...state.pendingOperations,
+      {
+        ...operation,
+        id: `op_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        timestamp: new Date(),
+        retries: 0,
+      }
+    ]
+  })),
+  
+  removeOperation: (id) => set((state) => ({
+    ...state,
+    pendingOperations: state.pendingOperations.filter(op => op.id !== id)
+  })),
+  
+  incrementOperationRetries: (id) => set((state) => ({
+    ...state,
+    pendingOperations: state.pendingOperations.map(op =>
+      op.id === id ? { ...op, retries: op.retries + 1 } : op
+    )
+  })),
+  
+  clearOperationQueue: () => set((state) => ({
+    ...state,
+    pendingOperations: []
+  })),
   
   // Computed
   hasUnsyncedChanges: () => {

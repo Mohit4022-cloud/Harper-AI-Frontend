@@ -3,7 +3,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { useState } from 'react'
-import { toast } from '@/hooks/use-toast'
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -26,11 +25,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
           mutations: {
             onError: (error: any) => {
               const message = error?.response?.data?.message || error?.message || 'An error occurred'
-              toast({
-                title: 'Error',
-                description: message,
-                variant: 'destructive',
-              })
+              console.error('Mutation error:', message)
             },
           },
         },

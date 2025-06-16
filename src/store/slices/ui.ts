@@ -54,56 +54,71 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
   notifications: [],
   
   // Actions
-  setTheme: (theme) => set((state) => {
-    state.theme = theme
-  }),
+  setTheme: (theme) => set((state) => ({
+    ...state,
+    theme
+  })),
   
-  toggleSidebar: () => set((state) => {
-    state.sidebarCollapsed = !state.sidebarCollapsed
-  }),
+  toggleSidebar: () => set((state) => ({
+    ...state,
+    sidebarCollapsed: !state.sidebarCollapsed
+  })),
   
-  setSidebarCollapsed: (collapsed) => set((state) => {
-    state.sidebarCollapsed = collapsed
-  }),
+  setSidebarCollapsed: (collapsed) => set((state) => ({
+    ...state,
+    sidebarCollapsed: collapsed
+  })),
   
-  setActiveView: (view) => set((state) => {
-    state.activeView = view
-  }),
+  setActiveView: (view) => set((state) => ({
+    ...state,
+    activeView: view
+  })),
   
-  openModal: (modal, data) => set((state) => {
-    if (modal === 'contactDetail' && data) {
-      state.modals.contactDetail = data as ContactId
-    } else if (modal !== 'contactDetail') {
-      state.modals[modal] = true
+  openModal: (modal, data) => set((state) => ({
+    ...state,
+    modals: {
+      ...state.modals,
+      ...(modal === 'contactDetail' && data
+        ? { contactDetail: data as ContactId }
+        : modal !== 'contactDetail'
+        ? { [modal]: true }
+        : {})
     }
-  }),
+  })),
   
-  closeModal: (modal) => set((state) => {
-    if (modal === 'contactDetail') {
-      state.modals.contactDetail = null
-    } else {
-      state.modals[modal] = false
+  closeModal: (modal) => set((state) => ({
+    ...state,
+    modals: {
+      ...state.modals,
+      ...(modal === 'contactDetail'
+        ? { contactDetail: null }
+        : { [modal]: false })
     }
-  }),
+  })),
   
   addNotification: (notification) => set((state) => {
-    state.notifications.push({
-      ...notification,
-      id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: new Date(),
-    })
+    const newNotifications = [
+      ...state.notifications,
+      {
+        ...notification,
+        id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        timestamp: new Date(),
+      }
+    ]
     
-    // Keep only last 10 notifications
-    if (state.notifications.length > 10) {
-      state.notifications = state.notifications.slice(-10)
+    return {
+      ...state,
+      notifications: newNotifications.length > 10 ? newNotifications.slice(-10) : newNotifications
     }
   }),
   
-  removeNotification: (id) => set((state) => {
-    state.notifications = state.notifications.filter(n => n.id !== id)
-  }),
+  removeNotification: (id) => set((state) => ({
+    ...state,
+    notifications: state.notifications.filter(n => n.id !== id)
+  })),
   
-  clearNotifications: () => set((state) => {
-    state.notifications = []
-  }),
+  clearNotifications: () => set((state) => ({
+    ...state,
+    notifications: []
+  })),
 })

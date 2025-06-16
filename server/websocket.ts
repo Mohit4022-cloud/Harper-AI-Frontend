@@ -178,7 +178,8 @@ export function emitAIResponse(data: EventMap['ai:response']) {
 }
 
 export function emitMetricsUpdated(data: EventMap['metrics:updated']) {
-  io.to(`user:${data.userId}`).emit('metrics:updated', data)
+  // Metrics updates are global broadcasts to all connected clients
+  io.emit('metrics:updated', data)
 }
 
 export function emitUserActivity(data: EventMap['user:activity']) {

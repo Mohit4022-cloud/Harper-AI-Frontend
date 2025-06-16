@@ -1,4 +1,4 @@
-import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios'
+import axios, { type AxiosInstance, type AxiosRequestConfig, isAxiosError } from 'axios'
 import { logger } from './logger'
 import { performanceMonitor } from './performance'
 
@@ -57,15 +57,17 @@ class ApiClient {
         }
 
         logger.debug('API Request', {
-          method: config.method,
-          url: config.url,
-          requestId,
+          metadata: {
+            method: config.method,
+            url: config.url,
+            requestId,
+          }
         })
 
         return config
       },
       (error) => {
-        logger.error('API Request Error', { error })
+        logger.error('API Request Error', { metadata: { error } })
         return Promise.reject(error)
       }
     )
@@ -77,36 +79,37 @@ class ApiClient {
         const requestId = response.config.headers['X-Request-ID']
 
         logger.debug('API Response', {
-          method: response.config.method,
-          url: response.config.url,
-          status: response.status,
-          duration,
-          requestId,
+          metadata: {
+            method: response.config.method,
+            url: response.config.url,
+            status: response.status,
+            duration,
+            requestId,
+          }
         })
 
-        // Track API performance
-        if (response.config.url) {
-          performanceMonitor.measure(
-            `api_${response.config.method}_${response.config.url}`,
-            'navigation'
-          )
-        }
+        // TODO: Track API performance with proper method
 
         return response.data
       },
-      async (error: AxiosError<ApiError>) => {
+      async (error: any) => {
+        if (!isAxiosError(error)) {
+          throw error
+        }
         const duration = Date.now() - (error.config?.metadata?.startTime || Date.now())
         const requestId = error.config?.headers?.['X-Request-ID']
 
         // Enhanced error logging
         logger.error('API Response Error', {
-          method: error.config?.method,
-          url: error.config?.url,
-          status: error.response?.status,
-          message: error.message,
-          duration,
-          requestId,
-          response: error.response?.data,
+          metadata: {
+            method: error.config?.method,
+            url: error.config?.url,
+            status: error.response?.status,
+            message: error.message,
+            duration,
+            requestId,
+            response: error.response?.data,
+          }
         })
 
         // Handle token refresh
@@ -132,9 +135,9 @@ class ApiClient {
         // Format error for consistency
         const apiError: ApiError = {
           message: error.response?.data?.message || error.message || 'An error occurred',
-          code: error.response?.data?.code || error.code,
-          status: error.response?.status,
-          details: error.response?.data?.details,
+          ...(error.response?.data?.code || error.code ? { code: error.response?.data?.code || error.code } : {}),
+          ...(error.response?.status !== undefined ? { status: error.response.status } : {}),
+          ...(error.response?.data?.details ? { details: error.response.data.details } : {}),
         }
 
         return Promise.reject(apiError)

@@ -139,9 +139,12 @@ export function VirtualContactTable({ filters = {}, onContactSelect }: VirtualCo
   const handleBulkFavorite = useCallback(async (favorite: boolean) => {
     if (selectedIds.size === 0) return
     
+    // TODO: Add isFavorite field to Contact type or use tags
     await bulkUpdate.mutateAsync({
       ids: Array.from(selectedIds),
-      updates: { isFavorite: favorite },
+      updates: { 
+        tags: favorite ? ['favorite'] : [] 
+      },
     })
     setSelectedIds(new Set())
     setIsSelecting(false)
@@ -150,9 +153,10 @@ export function VirtualContactTable({ filters = {}, onContactSelect }: VirtualCo
   const handleBulkArchive = useCallback(async () => {
     if (selectedIds.size === 0) return
     
+    // Mark as disqualified instead of archived
     await bulkUpdate.mutateAsync({
       ids: Array.from(selectedIds),
-      updates: { status: 'archived' },
+      updates: { status: 'disqualified' },
     })
     setSelectedIds(new Set())
     setIsSelecting(false)
@@ -318,7 +322,6 @@ export function VirtualContactTable({ filters = {}, onContactSelect }: VirtualCo
             <div className="w-10 flex items-center justify-center">
               <Checkbox
                 checked={selectedIds.size === allContacts.length && allContacts.length > 0}
-                indeterminate={selectedIds.size > 0 && selectedIds.size < allContacts.length}
                 onCheckedChange={handleSelectAll}
               />
             </div>
@@ -447,7 +450,7 @@ export function VirtualContactTable({ filters = {}, onContactSelect }: VirtualCo
                     
                     {/* Tags */}
                     <div className="col-span-2 flex items-center gap-1 overflow-hidden">
-                      {contact.tags.slice(0, 2).map((tag, i) => (
+                      {contact.tags.slice(0, 2).map((tag: string, i: number) => (
                         <Badge key={i} variant="secondary" className="text-xs">
                           {tag}
                         </Badge>

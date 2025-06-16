@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       '24h': 24 * 60 * 60 * 1000,
     }
     
-    const threshold = now - (timeThresholds[timeRange] || timeThresholds['1h'])
+    const threshold = now - (timeThresholds[timeRange] ?? timeThresholds['1h'] ?? 60 * 60 * 1000)
     
     // Filter metrics
     let filtered = metricsStore.filter(m => m.timestamp >= threshold)
@@ -169,25 +169,27 @@ function calculateAggregations(metrics: any[]) {
     if (!acc[metric.name]) {
       acc[metric.name] = []
     }
-    acc[metric.name].push(metric.value)
+    acc[metric.name]!.push(metric.value)
     return acc
   }, {} as Record<string, number[]>)
   
-  const aggregations: Record<string, any> = {}
+  const aggregations = {} as Record<string, any>
   
-  Object.entries(grouped).forEach(([name, values]) => {
-    const sorted = values.sort((a, b) => a - b)
-    const sum = values.reduce((acc, val) => acc + val, 0)
+  (Object.entries(grouped) as [string, number[]][]).forEach(([name, values]) => {
+    if (!values || values.length === 0) return
+    
+    const sorted = [...values].sort((a, b) => a - b)
+    const sum = values.reduce((acc: number, val: number) => acc + val, 0)
     
     aggregations[name] = {
       count: values.length,
-      min: sorted[0],
-      max: sorted[sorted.length - 1],
+      min: sorted[0] ?? 0,
+      max: sorted[sorted.length - 1] ?? 0,
       avg: sum / values.length,
-      median: sorted[Math.floor(sorted.length / 2)],
-      p75: sorted[Math.floor(sorted.length * 0.75)],
-      p95: sorted[Math.floor(sorted.length * 0.95)],
-      p99: sorted[Math.floor(sorted.length * 0.99)],
+      median: sorted[Math.floor(sorted.length / 2)] ?? 0,
+      p75: sorted[Math.floor(sorted.length * 0.75)] ?? 0,
+      p95: sorted[Math.floor(sorted.length * 0.95)] ?? 0,
+      p99: sorted[Math.floor(sorted.length * 0.99)] ?? 0,
     }
   })
   

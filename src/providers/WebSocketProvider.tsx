@@ -14,10 +14,10 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   const setConnectionStatus = useAppStore(state => state.setConnectionStatus)
 
   useEffect(() => {
-    if (status === 'authenticated' && session?.user?.id && session?.accessToken) {
+    if (status === 'authenticated' && session?.user && (session as any)?.accessToken) {
       // Initialize WebSocket connection
       setConnectionStatus('connecting')
-      initializeWebSocket(session.accessToken, session.user.id)
+      initializeWebSocket((session as any).accessToken, (session.user as any).id || session.user.email || 'unknown')
       
       // Cleanup on unmount
       return () => {
@@ -30,10 +30,10 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   // Handle visibility change to reconnect when app comes back to foreground
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && session?.accessToken && session?.user?.id) {
+      if (document.visibilityState === 'visible' && (session as any)?.accessToken && session?.user) {
         if (!wsManager.isConnected()) {
           console.log('🔄 Reconnecting WebSocket after visibility change')
-          initializeWebSocket(session.accessToken, session.user.id)
+          initializeWebSocket((session as any).accessToken, (session.user as any).id || session.user.email || 'unknown')
         }
       }
     }
@@ -47,9 +47,9 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   // Handle network reconnection
   useEffect(() => {
     const handleOnline = () => {
-      if (session?.accessToken && session?.user?.id && !wsManager.isConnected()) {
+      if ((session as any)?.accessToken && session?.user && !wsManager.isConnected()) {
         console.log('🔄 Reconnecting WebSocket after network recovery')
-        initializeWebSocket(session.accessToken, session.user.id)
+        initializeWebSocket((session as any).accessToken, (session.user as any).id || session.user.email || 'unknown')
       }
     }
 

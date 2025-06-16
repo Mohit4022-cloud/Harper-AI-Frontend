@@ -67,16 +67,16 @@ class SocketClient {
     if (!this.socket) return
 
     this.socket.on('connect', () => {
-      logger.info('Socket connected', { id: this.socket?.id })
+      logger.info('Socket connected', { metadata: { id: this.socket?.id } })
       this.reconnectAttempts = 0
     })
 
     this.socket.on('disconnect', (reason) => {
-      logger.warn('Socket disconnected', { reason })
+      logger.warn('Socket disconnected', { metadata: { reason } })
     })
 
     this.socket.on('connect_error', (error) => {
-      logger.error('Socket connection error', { error: error.message })
+      logger.error('Socket connection error', error)
       this.reconnectAttempts++
       
       if (this.reconnectAttempts >= this.maxReconnectAttempts) {
@@ -86,7 +86,7 @@ class SocketClient {
     })
 
     this.socket.on('error', (error) => {
-      logger.error('Socket error', { error })
+      logger.error('Socket error', error)
     })
   }
 
@@ -103,7 +103,7 @@ class SocketClient {
     ...args: Parameters<ClientToServerEvents[K]>
   ) {
     if (!this.socket?.connected) {
-      logger.warn('Cannot emit event, socket not connected', { event })
+      logger.warn('Cannot emit event, socket not connected', { metadata: { event } })
       return
     }
     this.socket.emit(event, ...args)
@@ -114,10 +114,10 @@ class SocketClient {
     handler: ServerToClientEvents[K]
   ) {
     if (!this.socket) {
-      logger.warn('Cannot subscribe to event, socket not initialized', { event })
+      logger.warn('Cannot subscribe to event, socket not initialized', { metadata: { event } })
       return
     }
-    this.socket.on(event, handler)
+    this.socket.on(event as any, handler as any)
   }
 
   off<K extends keyof ServerToClientEvents>(
@@ -126,9 +126,9 @@ class SocketClient {
   ) {
     if (!this.socket) return
     if (handler) {
-      this.socket.off(event, handler)
+      this.socket.off(event as any, handler as any)
     } else {
-      this.socket.off(event)
+      this.socket.off(event as any)
     }
   }
 

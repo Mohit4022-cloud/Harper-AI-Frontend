@@ -92,13 +92,14 @@ export function VoiceCallInterface() {
     
     // Subscribe to WebSocket events
     wsManager.socket?.on('ai:response', handleAIResponse)
-    wsManager.socket?.on('transcript:update', handleTranscriptUpdate)
-    wsManager.socket?.on('ai:suggestion', handleAISuggestion)
+    // TODO: Add these events to the EventMap type definition
+    // wsManager.socket?.on('transcript:update', handleTranscriptUpdate)
+    // wsManager.socket?.on('ai:suggestion', handleAISuggestion)
     
     return () => {
       wsManager.socket?.off('ai:response', handleAIResponse)
-      wsManager.socket?.off('transcript:update', handleTranscriptUpdate)
-      wsManager.socket?.off('ai:suggestion', handleAISuggestion)
+      // wsManager.socket?.off('transcript:update', handleTranscriptUpdate)
+      // wsManager.socket?.off('ai:suggestion', handleAISuggestion)
     }
   }, [activeCall])
   
@@ -128,11 +129,11 @@ export function VoiceCallInterface() {
   
   const handleMuteToggle = () => {
     setIsMuted(!isMuted)
-    // Send mute state to backend
-    wsManager.emit('call:mute', {
-      callId: activeCall.id,
-      muted: !isMuted,
-    })
+    // TODO: Add call:mute event to EventMap
+    // wsManager.emit('call:mute', {
+    //   callId: activeCall.id,
+    //   muted: !isMuted,
+    // })
   }
   
   const handleEndCall = async () => {

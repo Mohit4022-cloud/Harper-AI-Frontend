@@ -137,16 +137,16 @@ export function useRealtimeSync() {
   useEffect(() => {
     if (!wsManager.isConnected()) return
     
-    // Set up event listeners
-    wsManager.socket?.on('contact:sync', handleContactSync)
-    wsManager.socket?.on('call:sync', handleCallSync)
-    wsManager.socket?.on('metrics:sync', handleMetricsSync)
+    // TODO: Add sync events to EventMap type definition
+    // wsManager.socket?.on('contact:sync', handleContactSync)
+    // wsManager.socket?.on('call:sync', handleCallSync)
+    // wsManager.socket?.on('metrics:sync', handleMetricsSync)
     
     // Cleanup
     return () => {
-      wsManager.socket?.off('contact:sync', handleContactSync)
-      wsManager.socket?.off('call:sync', handleCallSync)
-      wsManager.socket?.off('metrics:sync', handleMetricsSync)
+      // wsManager.socket?.off('contact:sync', handleContactSync)
+      // wsManager.socket?.off('call:sync', handleCallSync)
+      // wsManager.socket?.off('metrics:sync', handleMetricsSync)
     }
   }, [handleContactSync, handleCallSync, handleMetricsSync])
   

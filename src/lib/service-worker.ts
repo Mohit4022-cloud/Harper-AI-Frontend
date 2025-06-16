@@ -42,14 +42,14 @@ export async function registerServiceWorker() {
     })
 
     // Enable navigation preload if supported
-    if ('navigationPreload' in registration) {
-      await registration.navigationPreload.enable()
+    if ('navigationPreload' in registration && registration.navigationPreload) {
+      await (registration as any).navigationPreload.enable()
     }
 
     // Register periodic sync if supported
-    if ('periodicSync' in registration) {
+    if ('periodicSync' in registration && registration.periodicSync) {
       try {
-        await registration.periodicSync.register('update-contacts', {
+        await (registration as any).periodicSync.register('update-contacts', {
           minInterval: 24 * 60 * 60 * 1000, // 24 hours
         })
       } catch (error) {
@@ -104,7 +104,7 @@ export function sendMessageToSW(message: any) {
       }
     }
     
-    navigator.serviceWorker.controller.postMessage(message, [messageChannel.port2])
+    navigator.serviceWorker.controller!.postMessage(message, [messageChannel.port2])
   })
 }
 
@@ -129,7 +129,7 @@ export async function getServiceWorkerStatus() {
       supported: true,
       registered: false,
       ready: false,
-      error: error.message,
+      error: (error as Error).message,
     }
   }
 }

@@ -10,12 +10,14 @@ const iconMap = {
   success: CheckCircle,
   error: AlertCircle,
   info: Info,
+  warning: AlertCircle,
 }
 
 const colorMap = {
   success: 'text-green-600 dark:text-green-400',
   error: 'text-red-600 dark:text-red-400',
   info: 'text-blue-600 dark:text-blue-400',
+  warning: 'text-yellow-600 dark:text-yellow-400',
 }
 
 export function Toaster() {
@@ -24,12 +26,10 @@ export function Toaster() {
 
   useEffect(() => {
     const timers = notifications.map(notification => {
-      if (notification.duration !== Infinity) {
-        return setTimeout(() => {
-          removeNotification(notification.id)
-        }, notification.duration || 5000)
-      }
-      return null
+      // Auto-dismiss after 5 seconds
+      return setTimeout(() => {
+        removeNotification(notification.id)
+      }, 5000)
     })
 
     return () => {
@@ -69,14 +69,6 @@ export function Toaster() {
                           {notification.message}
                         </p>
                       )}
-                      {notification.action && (
-                        <button
-                          className="mt-2 text-sm font-medium text-accent hover:text-accent-emphasis"
-                          onClick={notification.action.onClick}
-                        >
-                          {notification.action.label}
-                        </button>
-                      )}
                     </div>
                     <div className="ml-4 flex-shrink-0 flex">
                       <button
@@ -89,18 +81,7 @@ export function Toaster() {
                     </div>
                   </div>
                 </div>
-                {notification.duration !== Infinity && (
-                  <motion.div
-                    className="h-1 bg-accent"
-                    initial={{ scaleX: 1 }}
-                    animate={{ scaleX: 0 }}
-                    transition={{
-                      duration: (notification.duration || 5000) / 1000,
-                      ease: 'linear',
-                    }}
-                    style={{ originX: 0 }}
-                  />
-                )}
+                {/* Progress bar removed - notifications auto-dismiss after 5s */}
               </div>
             </motion.div>
           )

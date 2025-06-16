@@ -40,30 +40,30 @@ export function useDesignTokens() {
   // Semantic color helpers
   const colors = {
     bg: {
-      primary: getToken('colors', 'background').primary,
-      secondary: getToken('colors', 'background').secondary,
-      tertiary: getToken('colors', 'background').tertiary,
-      accent: getToken('colors', 'background').accent,
-      muted: getToken('colors', 'background').muted,
+      primary: tokens.colors.background.primary,
+      secondary: tokens.colors.background.secondary,
+      tertiary: tokens.colors.background.tertiary,
+      accent: tokens.colors.background.accent,
+      muted: tokens.colors.background.muted,
     },
     fg: {
-      primary: getToken('colors', 'foreground').primary,
-      secondary: getToken('colors', 'foreground').secondary,
-      muted: getToken('colors', 'foreground').muted,
-      accent: getToken('colors', 'foreground').accent,
+      primary: tokens.colors.foreground.primary,
+      secondary: tokens.colors.foreground.secondary,
+      muted: tokens.colors.foreground.muted,
+      accent: tokens.colors.foreground.accent,
     },
     accent: {
-      primary: getToken('colors', 'accent').primary,
-      secondary: getToken('colors', 'accent').secondary,
-      success: getToken('colors', 'accent').success,
-      warning: getToken('colors', 'accent').warning,
-      error: getToken('colors', 'accent').error,
-      info: getToken('colors', 'accent').info,
+      primary: tokens.colors.accent.primary,
+      secondary: tokens.colors.accent.secondary,
+      success: tokens.colors.accent.success,
+      warning: tokens.colors.accent.warning,
+      error: tokens.colors.accent.error,
+      info: tokens.colors.accent.info,
     },
     border: {
-      primary: getToken('colors', 'border').primary,
-      secondary: getToken('colors', 'border').secondary,
-      accent: getToken('colors', 'border').accent,
+      primary: tokens.colors.border.primary,
+      secondary: tokens.colors.border.secondary,
+      accent: tokens.colors.border.accent,
     },
   }
 

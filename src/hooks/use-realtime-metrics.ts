@@ -22,17 +22,17 @@ export function useRealtimeMetrics() {
   const [previousMetrics, setPreviousMetrics] = useState<Metrics>(metrics)
   
   // Fetch initial metrics
-  const { isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['metrics', 'realtime'],
     queryFn: async () => {
       const response = await fetch('/api/metrics/realtime')
       if (!response.ok) {
         throw new Error('Failed to fetch metrics')
       }
-      return response.json()
-    },
-    onSuccess: (data: Metrics) => {
+      const data = await response.json()
+      // Update store directly in queryFn
       useAppStore.getState().setMetrics(data)
+      return data
     },
     refetchInterval: 30000, // Refetch every 30 seconds
     staleTime: 10000, // Consider data stale after 10 seconds

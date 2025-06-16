@@ -26,4 +26,3 @@ req.on('timeout', () => {
 });
 
 req.end();
-EOF < /dev/null

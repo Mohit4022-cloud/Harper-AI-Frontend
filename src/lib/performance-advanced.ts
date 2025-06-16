@@ -49,9 +49,11 @@ export function useIntersectionObserver(
     if (!ref.current) return
     
     const observer = new IntersectionObserver(([entry]) => {
-      setIsIntersecting(entry.isIntersecting)
-      if (entry.isIntersecting) {
-        setHasIntersected(true)
+      if (entry) {
+        setIsIntersecting(entry.isIntersecting)
+        if (entry.isIntersecting) {
+          setHasIntersected(true)
+        }
       }
     }, options)
     
@@ -87,7 +89,9 @@ export class DataVirtualizer<T> {
     // Limit cache size to prevent memory issues
     if (this.cache.size > 10) {
       const firstKey = this.cache.keys().next().value
-      this.cache.delete(firstKey)
+      if (firstKey !== undefined) {
+        this.cache.delete(firstKey)
+      }
     }
     
     return data
@@ -134,8 +138,8 @@ export class ComputeWorker {
         }
       }
       
-      this.worker.addEventListener('message', handler)
-      this.worker.postMessage(data)
+      this.worker!.addEventListener('message', handler)
+      this.worker!.postMessage(data)
     })
   }
   
@@ -197,7 +201,7 @@ export class RequestBatcher<T, R> {
       const results = await this.processFn(currentBatch)
       
       results.forEach((result, index) => {
-        currentResolvers[index].resolve(result)
+        currentResolvers[index]?.resolve(result)
       })
     } catch (error) {
       currentResolvers.forEach(resolver => {
@@ -245,7 +249,7 @@ export function measurePerformance(name: string) {
 // Memory leak detection
 export class MemoryLeakDetector {
   private snapshots: Array<{ timestamp: number; heapSize: number }> = []
-  private interval: NodeJS.Timer | null = null
+  private interval: ReturnType<typeof setInterval> | null = null
   
   start(intervalMs: number = 30000) {
     if (typeof window === 'undefined' || !('memory' in performance)) {
@@ -290,8 +294,8 @@ export class MemoryLeakDetector {
   private calculateTrend(): number {
     if (this.snapshots.length < 2) return 0
     
-    const first = this.snapshots[0].heapSize
-    const last = this.snapshots[this.snapshots.length - 1].heapSize
+    const first = this.snapshots[0]?.heapSize ?? 0
+    const last = this.snapshots[this.snapshots.length - 1]?.heapSize ?? 0
     
     return (last - first) / first
   }
@@ -314,7 +318,7 @@ export function withPerformance<P extends object>(
         }
       })
       
-      return React.createElement(Component, { ...props, ref })
+      return React.createElement(Component, { ...props, ref } as P)
     }),
     (prevProps, nextProps) => {
       // Custom comparison logic for better memoization

@@ -259,7 +259,7 @@ class WebSocketManager {
   
   // Public methods
   emit<K extends keyof EventMap>(event: K, data: EventMap[K]) {
-    this.socket?.emit(event, data)
+    this.socket?.emit(event as any, data)
   }
   
   disconnect() {
@@ -276,8 +276,8 @@ class WebSocketManager {
   getConnectionState(): 'connected' | 'disconnected' | 'connecting' | 'error' {
     if (!this.socket) return 'disconnected'
     if (this.socket.connected) return 'connected'
-    if (this.socket.connecting) return 'connecting'
-    return 'error'
+    if (this.socket.disconnected) return 'disconnected'
+    return 'connecting'
   }
 }
 

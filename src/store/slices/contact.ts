@@ -60,78 +60,103 @@ export const createContactSlice: StateCreator<
   error: null,
   
   // Actions
-  setContacts: (contacts) => set((state) => {
-    state.contacts = contacts
-    state.isLoading = false
-    state.error = null
-  }),
+  setContacts: (contacts) => set((state) => ({
+    ...state,
+    contacts,
+    isLoading: false,
+    error: null
+  })),
   
-  addContact: (contact) => set((state) => {
-    state.contacts.unshift(contact)
-    state.totalCount += 1
-  }),
+  addContact: (contact) => set((state) => ({
+    ...state,
+    contacts: [contact, ...state.contacts],
+    totalCount: state.totalCount + 1
+  })),
   
-  updateContact: (id, updates) => set((state) => {
-    const index = state.contacts.findIndex(c => c.id === id)
-    if (index !== -1) {
-      state.contacts[index] = { ...state.contacts[index], ...updates }
+  updateContact: (id, updates) => set((state) => ({
+    ...state,
+    contacts: state.contacts.map(c => c.id === id ? { ...c, ...updates } : c)
+  })),
+  
+  deleteContact: (id) => set((state) => {
+    const newSelectedContacts = new Set(state.selectedContacts)
+    newSelectedContacts.delete(id)
+    return {
+      ...state,
+      contacts: state.contacts.filter(c => c.id !== id),
+      selectedContacts: newSelectedContacts,
+      totalCount: state.totalCount - 1
     }
   }),
   
-  deleteContact: (id) => set((state) => {
-    state.contacts = state.contacts.filter(c => c.id !== id)
-    state.selectedContacts.delete(id)
-    state.totalCount -= 1
-  }),
-  
   deleteContacts: (ids) => set((state) => {
-    state.contacts = state.contacts.filter(c => !ids.includes(c.id))
-    ids.forEach(id => state.selectedContacts.delete(id))
-    state.totalCount -= ids.length
+    const newSelectedContacts = new Set(state.selectedContacts)
+    ids.forEach(id => newSelectedContacts.delete(id))
+    return {
+      ...state,
+      contacts: state.contacts.filter(c => !ids.includes(c.id)),
+      selectedContacts: newSelectedContacts,
+      totalCount: state.totalCount - ids.length
+    }
   }),
   
   selectContact: (id) => set((state) => {
-    if (state.selectedContacts.has(id)) {
-      state.selectedContacts.delete(id)
+    const newSelectedContacts = new Set(state.selectedContacts)
+    if (newSelectedContacts.has(id)) {
+      newSelectedContacts.delete(id)
     } else {
-      state.selectedContacts.add(id)
+      newSelectedContacts.add(id)
+    }
+    return {
+      ...state,
+      selectedContacts: newSelectedContacts
     }
   }),
   
   selectAll: () => set((state) => {
     const filteredContacts = get().getFilteredContacts()
-    state.selectedContacts = new Set(filteredContacts.map(c => c.id))
+    return {
+      ...state,
+      selectedContacts: new Set(filteredContacts.map(c => c.id))
+    }
   }),
   
-  clearSelection: () => set((state) => {
-    state.selectedContacts = new Set()
-  }),
+  clearSelection: () => set((state) => ({
+    ...state,
+    selectedContacts: new Set()
+  })),
   
-  setSearchQuery: (searchQuery) => set((state) => {
-    state.searchQuery = searchQuery
-  }),
+  setSearchQuery: (searchQuery) => set((state) => ({
+    ...state,
+    searchQuery
+  })),
   
-  setFilters: (filters) => set((state) => {
-    state.filters = { ...state.filters, ...filters }
-  }),
+  setFilters: (filters) => set((state) => ({
+    ...state,
+    filters: { ...state.filters, ...filters }
+  })),
   
-  setSorting: (sortBy, sortOrder) => set((state) => {
-    state.sortBy = sortBy
-    state.sortOrder = sortOrder
-  }),
+  setSorting: (sortBy, sortOrder) => set((state) => ({
+    ...state,
+    sortBy,
+    sortOrder
+  })),
   
-  setLoading: (isLoading) => set((state) => {
-    state.isLoading = isLoading
-  }),
+  setLoading: (isLoading) => set((state) => ({
+    ...state,
+    isLoading
+  })),
   
-  setError: (error) => set((state) => {
-    state.error = error
-    state.isLoading = false
-  }),
+  setError: (error) => set((state) => ({
+    ...state,
+    error,
+    isLoading: false
+  })),
   
-  setTotalCount: (count) => set((state) => {
-    state.totalCount = count
-  }),
+  setTotalCount: (count) => set((state) => ({
+    ...state,
+    totalCount: count
+  })),
   
   optimisticUpdate: async (update, rollback, asyncAction) => {
     update()

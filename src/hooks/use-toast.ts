@@ -12,7 +12,12 @@ export function useToast() {
 
   const toast = useCallback(({ title, description, variant = 'default' }: Omit<Toast, 'id'>) => {
     const id = Math.random().toString(36).substr(2, 9)
-    const newToast: Toast = { id, title, description, variant }
+    const newToast: Toast = { 
+      id, 
+      title,
+      ...(description !== undefined && { description }),
+      variant 
+    }
     
     setToasts((prev) => [...prev, newToast])
     

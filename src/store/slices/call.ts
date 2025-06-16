@@ -35,38 +35,41 @@ export const createCallSlice: StateCreator<CallSlice, [], [], CallSlice> = (set,
   callError: null,
   
   // Actions
-  setActiveCall: (call) => set((state) => {
-    state.activeCall = call
-  }),
+  setActiveCall: (call) => set((state) => ({
+    ...state,
+    activeCall: call
+  })),
   
-  updateActiveCall: (updates) => set((state) => {
-    if (state.activeCall) {
-      state.activeCall = { ...state.activeCall, ...updates }
-    }
-  }),
+  updateActiveCall: (updates) => set((state) => ({
+    ...state,
+    activeCall: state.activeCall ? { ...state.activeCall, ...updates } : null
+  })),
   
   addToHistory: (call) => set((state) => {
-    state.callHistory.unshift(call)
-    // Keep only last 100 calls in memory
-    if (state.callHistory.length > 100) {
-      state.callHistory = state.callHistory.slice(0, 100)
+    const newHistory = [call, ...state.callHistory]
+    return {
+      ...state,
+      callHistory: newHistory.length > 100 ? newHistory.slice(0, 100) : newHistory
     }
   }),
   
-  setInitiatingCall: (isInitiating) => set((state) => {
-    state.isInitiatingCall = isInitiating
-  }),
+  setInitiatingCall: (isInitiating) => set((state) => ({
+    ...state,
+    isInitiatingCall: isInitiating
+  })),
   
-  setCallError: (error) => set((state) => {
-    state.callError = error
-  }),
+  setCallError: (error) => set((state) => ({
+    ...state,
+    callError: error
+  })),
   
   // Call management
   startCall: async (contactId) => {
-    set((state) => {
-      state.isInitiatingCall = true
-      state.callError = null
-    })
+    set((state) => ({
+      ...state,
+      isInitiatingCall: true,
+      callError: null
+    }))
     
     try {
       const response = await fetch('/api/call/start', {
@@ -81,15 +84,17 @@ export const createCallSlice: StateCreator<CallSlice, [], [], CallSlice> = (set,
       
       const { call } = await response.json()
       
-      set((state) => {
-        state.activeCall = call
-        state.isInitiatingCall = false
-      })
+      set((state) => ({
+        ...state,
+        activeCall: call,
+        isInitiatingCall: false
+      }))
     } catch (error) {
-      set((state) => {
-        state.callError = error instanceof Error ? error.message : 'Failed to start call'
-        state.isInitiatingCall = false
-      })
+      set((state) => ({
+        ...state,
+        callError: error instanceof Error ? error.message : 'Failed to start call',
+        isInitiatingCall: false
+      }))
       throw error
     }
   },
@@ -111,32 +116,32 @@ export const createCallSlice: StateCreator<CallSlice, [], [], CallSlice> = (set,
         status: 'ended' as CallStatus,
       }
       
-      set((state) => {
-        state.activeCall = null
-        state.callHistory.unshift(endedCall)
-      })
+      set((state) => ({
+        ...state,
+        activeCall: null,
+        callHistory: [endedCall, ...state.callHistory]
+      }))
     } catch (error) {
-      set((state) => {
-        state.callError = error instanceof Error ? error.message : 'Failed to end call'
-      })
+      set((state) => ({
+        ...state,
+        callError: error instanceof Error ? error.message : 'Failed to end call'
+      }))
       throw error
     }
   },
   
-  updateCallStatus: (status) => set((state) => {
-    if (state.activeCall) {
-      state.activeCall.status = status
-    }
-  }),
+  updateCallStatus: (status) => set((state) => ({
+    ...state,
+    activeCall: state.activeCall ? { ...state.activeCall, status } : null
+  })),
   
-  addTranscriptEntry: (entry) => set((state) => {
-    if (state.activeCall) {
-      if (!state.activeCall.transcript) {
-        state.activeCall.transcript = []
-      }
-      state.activeCall.transcript.push(entry)
-    }
-  }),
+  addTranscriptEntry: (entry) => set((state) => ({
+    ...state,
+    activeCall: state.activeCall ? {
+      ...state.activeCall,
+      transcript: [...(state.activeCall.transcript || []), entry]
+    } : null
+  })),
   
   // Computed
   getCallById: (id) => {

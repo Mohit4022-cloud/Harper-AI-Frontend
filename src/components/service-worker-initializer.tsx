@@ -12,12 +12,10 @@ export function ServiceWorkerInitializer() {
     if (updateAvailable) {
       toast({
         title: 'Update Available',
-        description: 'A new version is available. Click to update.',
-        action: {
-          label: 'Update',
-          onClick: () => update(),
-        },
+        description: 'A new version is available. Refresh to update.',
       })
+      // Automatically update after a short delay
+      setTimeout(() => update(), 2000)
     }
   }, [updateAvailable, update, toast])
 

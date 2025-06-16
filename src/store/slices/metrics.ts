@@ -35,6 +35,10 @@ export const createMetricsSlice: StateCreator<MetricsSlice, [], [], MetricsSlice
     conversionRate: 0,
     activeUsers: 0,
     timestamp: new Date(),
+    callsToday: 0,
+    callsThisHour: 0,
+    successfulCalls: 0,
+    failedCalls: 0,
   },
   historicalMetrics: [],
   isLoadingMetrics: false,
@@ -43,11 +47,6 @@ export const createMetricsSlice: StateCreator<MetricsSlice, [], [], MetricsSlice
   
   // Actions
   setMetrics: (metrics) => set((state) => {
-    state.metrics = metrics
-    // Add to historical data
-    state.historicalMetrics.push({ ...metrics, timestamp: new Date() })
-    
-    // Keep only data within the selected time range
     const cutoffTime = new Date()
     switch (state.metricsTimeRange) {
       case '1h':
@@ -64,31 +63,44 @@ export const createMetricsSlice: StateCreator<MetricsSlice, [], [], MetricsSlice
         break
     }
     
-    state.historicalMetrics = state.historicalMetrics.filter(
-      m => m.timestamp >= cutoffTime
-    )
+    const newHistoricalMetrics = [...state.historicalMetrics, { ...metrics, timestamp: new Date() }]
+      .filter(m => m.timestamp >= cutoffTime)
+    
+    return {
+      ...state,
+      metrics,
+      historicalMetrics: newHistoricalMetrics
+    }
   }),
   
-  updateMetric: (key, value) => set((state) => {
-    state.metrics[key] = value
-  }),
+  updateMetric: (key, value) => set((state) => ({
+    ...state,
+    metrics: {
+      ...state.metrics,
+      [key]: value
+    }
+  })),
   
-  addHistoricalMetric: (metric) => set((state) => {
-    state.historicalMetrics.push({ ...metric, timestamp: new Date() })
-  }),
+  addHistoricalMetric: (metric) => set((state) => ({
+    ...state,
+    historicalMetrics: [...state.historicalMetrics, { ...metric, timestamp: new Date() }]
+  })),
   
-  setMetricsTimeRange: (range) => set((state) => {
-    state.metricsTimeRange = range
-  }),
+  setMetricsTimeRange: (range) => set((state) => ({
+    ...state,
+    metricsTimeRange: range
+  })),
   
-  setLoadingMetrics: (loading) => set((state) => {
-    state.isLoadingMetrics = loading
-  }),
+  setLoadingMetrics: (loading) => set((state) => ({
+    ...state,
+    isLoadingMetrics: loading
+  })),
   
-  setMetricsError: (error) => set((state) => {
-    state.metricsError = error
-    state.isLoadingMetrics = false
-  }),
+  setMetricsError: (error) => set((state) => ({
+    ...state,
+    metricsError: error,
+    isLoadingMetrics: false
+  })),
   
   // Computed
   getMetricTrend: (metric) => {

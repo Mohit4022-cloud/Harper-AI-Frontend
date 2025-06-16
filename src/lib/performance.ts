@@ -15,8 +15,10 @@ class PerformanceMonitor {
   private isEnabled: boolean = true
   
   constructor() {
-    this.initWebVitals()
-    this.initCustomMetrics()
+    if (typeof window !== 'undefined') {
+      this.initWebVitals()
+      this.initCustomMetrics()
+    }
   }
   
   private initWebVitals() {
@@ -127,8 +129,8 @@ class PerformanceMonitor {
     }, 30000) // Every 30 seconds
   }
   
-  private sendToAnalytics(metric: Metric) {
-    if (!this.isEnabled) return
+  public sendToAnalytics(metric: Metric) {
+    if (!this.isEnabled || typeof window === 'undefined') return
     
     // Send to your analytics service
     fetch('/api/analytics/performance', {
@@ -161,12 +163,14 @@ class PerformanceMonitor {
       performance.measure(measureName, startMark, endMark)
       
       const measure = performance.getEntriesByName(measureName)[0]
-      this.sendToAnalytics({
-        name: 'api-duration',
-        value: measure.duration,
-        id: name,
-        rating: measure.duration < 1000 ? 'good' : measure.duration < 3000 ? 'needs-improvement' : 'poor'
-      })
+      if (measure && 'duration' in measure) {
+        this.sendToAnalytics({
+          name: 'api-duration',
+          value: measure.duration,
+          id: name,
+          rating: measure.duration < 1000 ? 'good' : measure.duration < 3000 ? 'needs-improvement' : 'poor'
+        })
+      }
     })
   }
   
@@ -194,13 +198,16 @@ class PerformanceMonitor {
   }
 }
 
-export const performanceMonitor = new PerformanceMonitor()
+// Create singleton instance only on client side
+export const performanceMonitor = typeof window !== 'undefined' ? new PerformanceMonitor() : null as any
 
 // React hook for performance monitoring
 export function usePerformanceMonitoring() {
   const [metrics, setMetrics] = useState<Metric[]>([])
   
   useEffect(() => {
+    if (!performanceMonitor) return
+    
     const interval = setInterval(() => {
       setMetrics(performanceMonitor.getMetrics())
     }, 5000)
@@ -210,8 +217,8 @@ export function usePerformanceMonitoring() {
   
   return {
     metrics,
-    measureApiCall: performanceMonitor.measureApiCall.bind(performanceMonitor),
-    measureComponentRender: performanceMonitor.measureComponentRender.bind(performanceMonitor),
+    measureApiCall: performanceMonitor ? performanceMonitor.measureApiCall.bind(performanceMonitor) : () => Promise.resolve(),
+    measureComponentRender: performanceMonitor ? performanceMonitor.measureComponentRender.bind(performanceMonitor) : () => {},
   }
 }
 
@@ -222,9 +229,11 @@ export function withPerformanceMonitoring<P extends object>(
 ) {
   return function PerformanceMonitoredComponent(props: P) {
     useEffect(() => {
-      performanceMonitor.measureComponentRender(componentName, () => {
-        // Component rendered
-      })
+      if (performanceMonitor) {
+        performanceMonitor.measureComponentRender(componentName, () => {
+          // Component rendered
+        })
+      }
     })
     
     return React.createElement(WrappedComponent, props)
@@ -240,11 +249,13 @@ export function initPerformanceMonitoring() {
     setTimeout(() => {
       const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
       
-      performanceMonitor.sendToAnalytics({
-        name: 'page-load',
-        value: navigation.loadEventEnd - navigation.fetchStart,
-        id: window.location.pathname,
-      })
+      if (performanceMonitor) {
+        performanceMonitor.sendToAnalytics({
+          name: 'page-load',
+          value: navigation.loadEventEnd - navigation.fetchStart,
+          id: window.location.pathname,
+        })
+      }
     }, 0)
   })
   

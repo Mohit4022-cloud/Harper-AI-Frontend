@@ -13,7 +13,9 @@ export function usePerformanceInit() {
     if (process.env.NODE_ENV === 'development') {
       import('@/lib/performance-advanced').then(({ MemoryLeakDetector }) => {
         const detector = new MemoryLeakDetector()
-        detector.start()
+        if (detector && detector.start) {
+          detector.start()
+        }
         
         // Store detector for cleanup
         (window as any).__memoryDetector = detector

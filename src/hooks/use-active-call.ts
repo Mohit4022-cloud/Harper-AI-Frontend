@@ -158,8 +158,8 @@ export function useActiveCall() {
     toggleHold: toggleHold.mutate,
     transferCall: transferCall.mutate,
     updateActiveCall,
-    isStarting: startCall.isLoading,
-    isEnding: endCall.isLoading,
+    isStarting: startCall.isPending,
+    isEnding: endCall.isPending,
   }
 }
 
