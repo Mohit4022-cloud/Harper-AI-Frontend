@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { UpdateContactSchema, Contact } from '@/types/contact'
 import { z } from 'zod'
-
-declare global {
-  let contactsDb: Contact[]
-}
+import { getContactsDb, findContactById, findContactByEmail, updateContact, deleteContact } from '@/lib/contacts-db'
 
 export async function GET(
   request: NextRequest,
@@ -12,7 +9,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const contact = global.contactsDb.find(c => c.id === id)
+    const contact = findContactById(id)
     
     if (!contact) {
       return NextResponse.json(
@@ -44,8 +41,8 @@ export async function PUT(
     
     const validatedData = UpdateContactSchema.parse({ ...body, id })
     
-    const index = global.contactsDb.findIndex(c => c.id === id)
-    if (index === -1) {
+    const currentContact = findContactById(id)
+    if (!currentContact) {
       return NextResponse.json(
         { success: false, error: 'Contact not found' },
         { status: 404 }
@@ -53,8 +50,8 @@ export async function PUT(
     }
     
     // Check email uniqueness if email is being updated
-    if (validatedData.email && validatedData.email !== global.contactsDb[index].email) {
-      const existing = global.contactsDb.find(c => c.email === validatedData.email && c.id !== id)
+    if (validatedData.email && validatedData.email !== currentContact.email) {
+      const existing = getContactsDb().find(c => c.email === validatedData.email && c.id !== id)
       if (existing) {
         return NextResponse.json(
           { success: false, error: 'Contact with this email already exists' },
@@ -64,12 +61,12 @@ export async function PUT(
     }
     
     const updatedContact: Contact = {
-      ...global.contactsDb[index],
+      ...currentContact,
       ...validatedData,
       updatedAt: new Date().toISOString(),
     }
     
-    global.contactsDb[index] = updatedContact
+    updateContact(id, updatedContact)
     
     return NextResponse.json({
       success: true,
@@ -96,16 +93,14 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    const index = global.contactsDb.findIndex(c => c.id === id)
+    const deleted = deleteContact(id)
     
-    if (index === -1) {
+    if (!deleted) {
       return NextResponse.json(
         { success: false, error: 'Contact not found' },
         { status: 404 }
       )
     }
-    
-    const deleted = global.contactsDb.splice(index, 1)[0]
     
     return NextResponse.json({
       success: true,

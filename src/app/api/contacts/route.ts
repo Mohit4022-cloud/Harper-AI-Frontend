@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ContactSchema, CreateContactSchema, Contact } from '@/types/contact'
 import { z } from 'zod'
-
-// In-memory database
-declare global {
-  let contactsDb: Contact[]
-}
-
-if (!global.contactsDb) {
-  global.contactsDb = []
-}
+import { getContactsDb, findContactByEmail, addContact } from '@/lib/contacts-db'
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +10,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const tags = searchParams.get('tags')
     
-    let filtered = [...global.contactsDb]
+    let filtered = [...getContactsDb()]
     
     if (search) {
       const searchLower = search.toLowerCase()
@@ -66,7 +58,7 @@ export async function POST(request: NextRequest) {
     const validatedData = CreateContactSchema.parse(body)
     
     // Check for duplicate email
-    const existing = global.contactsDb.find(c => c.email === validatedData.email)
+    const existing = findContactByEmail(validatedData.email)
     if (existing) {
       return NextResponse.json(
         { success: false, error: 'Contact with this email already exists' },
@@ -84,7 +76,7 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date().toISOString(),
     }
     
-    global.contactsDb.push(newContact)
+    addContact(newContact)
     
     return NextResponse.json({
       success: true,

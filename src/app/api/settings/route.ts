@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { UserSettingsSchema, defaultUserSettings } from '@/types/settings'
 import { z } from 'zod'
-
-// In-memory storage for settings (replace with real DB in production)
-declare global {
-  let userSettings: any
-}
-
-if (!global.userSettings) {
-  global.userSettings = { ...defaultUserSettings }
-}
+import { getDefaultUserSettings, setDefaultUserSettings } from '@/lib/settings-db'
 
 /**
  * GET /api/settings
@@ -24,7 +16,7 @@ export async function GET(request: NextRequest) {
     // For now, return global settings
     return NextResponse.json({
       success: true,
-      data: global.userSettings,
+      data: getDefaultUserSettings(),
     })
   } catch (error) {
     console.error('Error fetching settings:', error)
@@ -55,7 +47,7 @@ export async function PUT(request: NextRequest) {
     // 3. Handle password hashing if password is being updated
     
     // For now, update global settings
-    global.userSettings = validatedSettings
+    setDefaultUserSettings(validatedSettings)
     
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 300))
@@ -106,12 +98,12 @@ export async function DELETE(request: NextRequest) {
     // 2. Reset user settings in database
     
     // Reset to defaults
-    global.userSettings = { ...defaultUserSettings }
+    setDefaultUserSettings({ ...defaultUserSettings })
     
     return NextResponse.json({
       success: true,
       message: 'Settings reset to defaults',
-      data: global.userSettings,
+      data: getDefaultUserSettings(),
     })
   } catch (error) {
     console.error('Error resetting settings:', error)

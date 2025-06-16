@@ -1,11 +1,5 @@
 import { PrismaClient } from '@prisma/client'
 
-declare global {
-  // make sure we only ever have one PrismaClient instance
-  // @ts-expect-error globalThis type
-  let prisma: PrismaClient | undefined
-}
-
 const prismaConfig = {
   log: process.env.NODE_ENV === 'development'
     ? ['query', 'error', 'warn'] as const
