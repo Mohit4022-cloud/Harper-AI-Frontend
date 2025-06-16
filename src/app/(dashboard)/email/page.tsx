@@ -13,11 +13,12 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/components/ui/use-toast'
 import { parseCSV, validateCSVStructure } from '@/lib/utils/csvParser'
-import { Mail, Upload, Download, Users, Sparkles, Send, FileText, AlertCircle, Search } from 'lucide-react'
+import { Mail, Upload, Download, Users, Sparkles, Send, FileText, AlertCircle, Search, TestTube } from 'lucide-react'
 import { useAuthStore } from '@/store/slices/authStore'
 import { useContactsStore } from '@/store/slices/contactsStore'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import ZoomInfoUploader from '@/components/email/ZoomInfoUploader'
+import { faker } from '@faker-js/faker'
 
 interface EmailSettings {
   tone: 'Professional' | 'Consultative' | 'Direct' | 'Friendly' | 'Urgent'
@@ -91,6 +92,31 @@ export default function EmailPage() {
     } else {
       setSelectedContactIds(filteredContacts.map(c => c.id))
     }
+  }
+
+  const generateTestData = () => {
+    const testContacts = Array.from({ length: 50 }, () => ({
+      id: faker.string.uuid(),
+      name: faker.person.fullName(),
+      email: faker.internet.email().toLowerCase(),
+      company: faker.company.name(),
+      title: faker.person.jobTitle(),
+      industry: faker.helpers.arrayElement(['SaaS', 'FinTech', 'Healthcare', 'E-commerce', 'MarTech', 'EdTech']),
+      phone: faker.phone.number(),
+      website: faker.internet.url(),
+      linkedinUrl: `https://linkedin.com/in/${faker.internet.userName()}`,
+      city: faker.location.city(),
+      state: faker.location.state({ abbreviated: true }),
+      companySize: faker.helpers.arrayElement(['1-10', '11-50', '51-200', '201-500', '500+']),
+      revenue: faker.helpers.arrayElement(['$1M-$10M', '$10M-$50M', '$50M-$100M', '$100M+']),
+      lastContactDate: faker.date.recent({ days: 90 }).toISOString()
+    }))
+    
+    setCsvData(testContacts)
+    toast({
+      title: "Test Data Generated",
+      description: `Generated ${testContacts.length} test contacts for testing`
+    })
   }
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -386,6 +412,18 @@ export default function EmailPage() {
                     <p className="text-sm text-muted-foreground mt-2">
                       CSV must include: name, email, company, title
                     </p>
+                    <div className="mt-4 flex items-center justify-center gap-2">
+                      <span className="text-sm text-muted-foreground">or</span>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={generateTestData}
+                        className="gap-2"
+                      >
+                        <TestTube className="h-4 w-4" />
+                        Generate Test Data
+                      </Button>
+                    </div>
                   </div>
                   
                   {csvData.length > 0 && (
