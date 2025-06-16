@@ -29,7 +29,7 @@ module.exports = {
     // General rules
     'no-console': 'off',
     'no-debugger': 'error',
-    'prefer-const': 'error',
+    'prefer-const': 'warn',
     'no-var': 'error',
     'eqeqeq': ['error', 'always'],
     'import/no-anonymous-default-export': 'off',
