@@ -58,7 +58,7 @@ if (SENTRY_DSN) {
       }
       
       // Add request context for API errors
-      if (hint.originalException && 'statusCode' in hint.originalException) {
+      if (hint.originalException && typeof hint.originalException === 'object' && 'statusCode' in hint.originalException) {
         event.tags = {
           ...event.tags,
           http_status_code: (hint.originalException as any).statusCode,
