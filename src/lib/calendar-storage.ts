@@ -4,6 +4,7 @@ import { CalendarEvent } from '@/types/calendar'
 
 // Declare global type for calendar events
 declare global {
+  // eslint-disable-next-line no-var
   var calendarEvents: CalendarEvent[] | undefined
 }
 
