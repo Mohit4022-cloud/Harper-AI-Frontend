@@ -4,11 +4,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { env } from '@/lib/env';
 
 export async function GET(request: NextRequest) {
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  
   // Check if we're in production
-  if (env.server.NODE_ENV === 'production') {
+  if (nodeEnv === 'production') {
     // Check for authorization header with a secure token
     const authHeader = request.headers.get('authorization');
     const debugToken = request.headers.get('x-debug-token');
@@ -26,20 +27,20 @@ export async function GET(request: NextRequest) {
   }
   
   // Return minimal information in production
-  const isProduction = env.server.NODE_ENV === 'production';
+  const isProduction = nodeEnv === 'production';
   
   return NextResponse.json({
     message: "Harper AI API Status",
     timestamp: new Date().toISOString(),
-    environment: env.server.NODE_ENV,
+    environment: nodeEnv,
     version: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
     // Only include detailed info in development
     ...(isProduction ? {} : {
       features: {
-        realTimeTranscription: env.server.ENABLE_REAL_TIME_TRANSCRIPTION,
-        aiCoaching: env.server.ENABLE_AI_COACHING,
-        predictiveAnalytics: env.server.ENABLE_PREDICTIVE_ANALYTICS,
-        crmSync: env.server.ENABLE_CRM_SYNC,
+        realTimeTranscription: process.env.ENABLE_REAL_TIME_TRANSCRIPTION === 'true',
+        aiCoaching: process.env.ENABLE_AI_COACHING === 'true',
+        predictiveAnalytics: process.env.ENABLE_PREDICTIVE_ANALYTICS === 'true',
+        crmSync: process.env.ENABLE_CRM_SYNC === 'true',
       },
       api: {
         endpoints: [
