@@ -38,9 +38,15 @@ export async function middleware(request: NextRequest) {
   )
   
   if (isProtectedPath) {
+    const secret = process.env.NEXTAUTH_SECRET
+    if (!secret) {
+      console.error('NEXTAUTH_SECRET is not configured')
+      return new NextResponse('Server Configuration Error', { status: 500 })
+    }
+    
     const token = await getToken({ 
       req: request,
-      secret: process.env.NEXTAUTH_SECRET 
+      secret
     })
     
     if (!token) {
