@@ -61,12 +61,27 @@ export function validateEnv() {
     try {
       // Skip validation in test environment with minimal config
       if (process.env.NODE_ENV === 'test') {
-        return {
-          server: {
-            ...process.env,
-            NODE_ENV: 'test',
+        const testEnv = {
+            NODE_ENV: 'test' as const,
             JWT_SECRET: 'test-secret-for-testing-only-not-for-production',
-          },
+            JWT_EXPIRY: '7d',
+            REFRESH_TOKEN_EXPIRY: '30d',
+            DATABASE_URL: undefined,
+            ELEVENLABS_API_KEY: undefined,
+            ELEVENLABS_AGENT_ID: undefined,
+            TWILIO_ACCOUNT_SID: undefined,
+            TWILIO_AUTH_TOKEN: undefined,
+            TWILIO_CALLER_NUMBER: undefined,
+            RATE_LIMIT_WINDOW: '60000',
+            RATE_LIMIT_MAX_REQUESTS: '100',
+            LOG_LEVEL: 'info' as const,
+            ENABLE_REAL_TIME_TRANSCRIPTION: false,
+            ENABLE_AI_COACHING: false,
+            ENABLE_PREDICTIVE_ANALYTICS: false,
+            ENABLE_CRM_SYNC: false,
+        };
+        return {
+          server: testEnv,
           client: {},
         };
       }
