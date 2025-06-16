@@ -1,68 +1,68 @@
-import { useEffect, useState } from 'react'
-import { registerServiceWorker, getServiceWorkerStatus } from '@/lib/service-worker'
+import { useState, useEffect, useCallback } from 'react'
 
-interface ServiceWorkerStatus {
+interface UseServiceWorkerReturn {
   supported: boolean
   registered: boolean
-  ready: boolean
   updateAvailable: boolean
-  error?: string
+  registration: ServiceWorkerRegistration | null
+  update: () => Promise<void>
+  unregister: () => Promise<void>
 }
 
-export function useServiceWorker() {
-  const [status, setStatus] = useState<ServiceWorkerStatus>({
-    supported: false,
-    registered: false,
-    ready: false,
-    updateAvailable: false,
-  })
+export function useServiceWorker(): UseServiceWorkerReturn {
+  const [supported] = useState(() => typeof window !== 'undefined' && 'serviceWorker' in navigator)
+  const [registered, setRegistered] = useState(false)
+  const [updateAvailable, setUpdateAvailable] = useState(false)
+  const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null)
 
   useEffect(() => {
-    // Check if service worker should be enabled
-    if (process.env.NEXT_PUBLIC_ENABLE_SERVICE_WORKER !== 'true') {
-      return
-    }
+    if (!supported || process.env.NODE_ENV !== 'production') return
 
-    let mounted = true
+    const registerServiceWorker = async () => {
+      try {
+        const reg = await navigator.serviceWorker.register('/sw.js')
+        setRegistration(reg)
+        setRegistered(true)
 
-    const init = async () => {
-      // Register service worker
-      await registerServiceWorker()
-      
-      // Get initial status
-      if (mounted) {
-        const currentStatus = await getServiceWorkerStatus()
-        setStatus(currentStatus as ServiceWorkerStatus)
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                setUpdateAvailable(true)
+              }
+            })
+          }
+        })
+      } catch (error) {
+        console.error('Service worker registration failed:', error)
       }
     }
 
-    init()
+    registerServiceWorker()
+  }, [supported])
 
-    // Check for updates periodically
-    const interval = setInterval(async () => {
-      if (mounted) {
-        const currentStatus = await getServiceWorkerStatus()
-        setStatus(currentStatus as ServiceWorkerStatus)
-      }
-    }, 60000) // Check every minute
-
-    return () => {
-      mounted = false
-      clearInterval(interval)
+  const update = useCallback(async () => {
+    if (registration) {
+      await registration.update()
+      window.location.reload()
     }
-  }, [])
+  }, [registration])
 
-  const updateServiceWorker = async () => {
-    if (!('serviceWorker' in navigator)) return
-
-    const registration = await navigator.serviceWorker.getRegistration()
-    if (registration?.waiting) {
-      registration.waiting.postMessage({ type: 'SKIP_WAITING' })
+  const unregister = useCallback(async () => {
+    if (registration) {
+      await registration.unregister()
+      setRegistered(false)
+      setRegistration(null)
     }
-  }
+  }, [registration])
 
   return {
-    ...status,
-    update: updateServiceWorker,
+    supported,
+    registered,
+    updateAvailable,
+    registration,
+    update,
+    unregister,
   }
 }
