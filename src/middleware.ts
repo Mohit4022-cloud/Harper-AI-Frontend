@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { authRateLimit, apiRateLimit } from '@/lib/rate-limit';
 import { csrfProtection } from '@/lib/csrf';
+import { env } from '@/lib/env';
 
 // CORS configuration with enhanced security
 const ALLOWED_ORIGINS = {
@@ -122,8 +123,8 @@ export async function middleware(request: NextRequest) {
       success: true,
       message: 'Harper AI API is healthy',
       timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV,
-      version: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'
+      environment: env.server.NODE_ENV || 'production',
+      version: env.client.NEXT_PUBLIC_APP_VERSION
     });
   }
 

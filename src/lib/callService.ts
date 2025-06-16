@@ -53,7 +53,7 @@ export interface CreateCallDto {
 /**
  * Data Transfer Object for updating an existing call
  */
-export interface UpdateCallDto extends Partial<CreateCallDto> {}
+export type UpdateCallDto = Partial<CreateCallDto>
 
 /**
  * Query parameters for filtering calls

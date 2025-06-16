@@ -6,7 +6,7 @@ import { addHours, addDays, startOfDay, endOfDay } from 'date-fns'
 
 // In-memory storage for calendar events (replace with real DB in production)
 declare global {
-  var calendarEvents: any[]
+  let calendarEvents: any[]
 }
 
 if (!global.calendarEvents) {

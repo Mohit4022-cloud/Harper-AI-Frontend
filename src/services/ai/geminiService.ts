@@ -97,7 +97,7 @@ function buildPersonalizationPrompt(context: PersonalizationContext): string {
   const insights = extractEnrichmentInsights(enrichmentData);
 
   // Build the prompt
-  let prompt = `You are an expert sales development representative crafting a personalized email.
+  const prompt = `You are an expert sales development representative crafting a personalized email.
 
 TEMPLATE:
 Subject: ${template.subject}

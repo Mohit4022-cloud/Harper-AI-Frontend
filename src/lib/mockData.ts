@@ -1,7 +1,7 @@
 import { User, UserRole, Contact, Call, Email, DashboardMetrics } from '@/types'
 
 // Mock Users Database (mutable for demo purposes)
-export let mockUsers: User[] = [
+export const mockUsers: User[] = [
   {
     id: '1',
     email: 'admin@harperai.com',

@@ -6,7 +6,7 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 
 const nextConfig: NextConfig = {
   experimental: {
-    // ppr: 'incremental', // PPR will be enabled when stable in Next.js
+    ppr: true, // Enable Partial Prerendering
     reactCompiler: {
       compilationMode: 'annotation'
     },

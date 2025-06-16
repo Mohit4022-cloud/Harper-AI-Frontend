@@ -3,7 +3,7 @@ import { UpdateContactSchema, Contact } from '@/types/contact'
 import { z } from 'zod'
 
 declare global {
-  var contactsDb: Contact[]
+  let contactsDb: Contact[]
 }
 
 export async function GET(

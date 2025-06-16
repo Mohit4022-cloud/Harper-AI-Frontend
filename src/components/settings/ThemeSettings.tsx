@@ -102,7 +102,7 @@ export function ThemeSettings() {
                         )}
                       >
                         <div className="space-y-1">
-                          <div className="opacity-70">// Preview</div>
+                          <div className="opacity-70">{`// Preview`}</div>
                           <div>Hello World</div>
                         </div>
                       </div>

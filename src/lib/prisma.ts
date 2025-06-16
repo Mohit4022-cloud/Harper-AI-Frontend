@@ -2,8 +2,8 @@ import { PrismaClient } from '@prisma/client'
 
 declare global {
   // make sure we only ever have one PrismaClient instance
-  // @ts-ignore globalThis type
-  var prisma: PrismaClient | undefined
+  // @ts-expect-error globalThis type
+  let prisma: PrismaClient | undefined
 }
 
 const prismaConfig = {

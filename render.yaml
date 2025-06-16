@@ -17,6 +17,16 @@ services:
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
+      - key: JWT_EXPIRY
+        value: 7d
+      - key: REFRESH_TOKEN_EXPIRY
+        value: 30d
+      - key: RATE_LIMIT_WINDOW
+        value: "60000"
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: "100"
+      - key: LOG_LEVEL
+        value: info
       - key: NEXT_PUBLIC_APP_VERSION
         value: "1.1.0"
     autoDeploy: true

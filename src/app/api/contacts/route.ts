@@ -4,7 +4,7 @@ import { z } from 'zod'
 
 // In-memory database
 declare global {
-  var contactsDb: Contact[]
+  let contactsDb: Contact[]
 }
 
 if (!global.contactsDb) {

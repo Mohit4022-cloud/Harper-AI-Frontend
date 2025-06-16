@@ -4,7 +4,7 @@ import { z } from 'zod'
 
 // In-memory database reference (shared with /api/calendar/events/route.ts)
 declare global {
-  var calendarEvents: any[]
+  let calendarEvents: any[]
 }
 
 if (!global.calendarEvents) {

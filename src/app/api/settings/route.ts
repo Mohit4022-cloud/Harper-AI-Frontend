@@ -4,7 +4,7 @@ import { z } from 'zod'
 
 // In-memory storage for settings (replace with real DB in production)
 declare global {
-  var userSettings: any
+  let userSettings: any
 }
 
 if (!global.userSettings) {

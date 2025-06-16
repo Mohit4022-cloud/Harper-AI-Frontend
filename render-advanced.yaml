@@ -22,7 +22,7 @@ services:
       - key: ENABLE_CRM_SYNC
         value: "false"
       - key: JWT_SECRET
-        value: harper-ai-advanced-demo-secret-2024
+        generateValue: true
       - key: JWT_EXPIRY
         value: 7d
       - key: REFRESH_TOKEN_EXPIRY
@@ -32,7 +32,7 @@ services:
       - key: RATE_LIMIT_MAX_REQUESTS
         value: "100"
       - key: LOG_LEVEL
-        value: debug
+        value: info
       # Note: Add API keys manually in Render dashboard:
       # - ELEVENLABS_API_KEY
       # - ELEVENLABS_AGENT_ID  
