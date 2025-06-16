@@ -41,18 +41,28 @@ export async function middleware(request: NextRequest) {
     const secret = process.env.NEXTAUTH_SECRET
     if (!secret) {
       console.error('NEXTAUTH_SECRET is not configured')
-      return new NextResponse('Server Configuration Error', { status: 500 })
+      // Redirect to error page instead of returning 500
+      const errorUrl = new URL('/auth/error', request.url)
+      errorUrl.searchParams.set('error', 'Configuration')
+      return NextResponse.redirect(errorUrl)
     }
     
-    const token = await getToken({ 
-      req: request,
-      secret
-    })
-    
-    if (!token) {
-      const signInUrl = new URL('/auth/signin', request.url)
-      signInUrl.searchParams.set('callbackUrl', request.nextUrl.pathname)
-      return NextResponse.redirect(signInUrl)
+    try {
+      const token = await getToken({ 
+        req: request,
+        secret
+      })
+      
+      if (!token) {
+        const signInUrl = new URL('/auth/signin', request.url)
+        signInUrl.searchParams.set('callbackUrl', request.nextUrl.pathname)
+        return NextResponse.redirect(signInUrl)
+      }
+    } catch (error) {
+      console.error('Auth token verification failed:', error)
+      const errorUrl = new URL('/auth/error', request.url)
+      errorUrl.searchParams.set('error', 'TokenVerification')
+      return NextResponse.redirect(errorUrl)
     }
   }
   
