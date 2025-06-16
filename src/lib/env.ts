@@ -80,9 +80,19 @@ export function validateEnv() {
             ENABLE_PREDICTIVE_ANALYTICS: false,
             ENABLE_CRM_SYNC: false,
         };
+        const testClientEnv = {
+            NEXT_PUBLIC_API_URL: undefined,
+            NEXT_PUBLIC_WS_URL: undefined,
+            NEXT_PUBLIC_APP_VERSION: '1.0.0',
+            NEXT_PUBLIC_ENABLE_CALLING: false,
+            NEXT_PUBLIC_ENABLE_RECORDING: false,
+            NEXT_PUBLIC_ENABLE_TRANSCRIPTION: false,
+            NEXT_PUBLIC_ENABLE_AI_COACHING: false,
+            NEXT_PUBLIC_ENABLE_REAL_TIME_TRANSCRIPTION: false,
+        };
         return {
           server: testEnv,
-          client: {},
+          client: testClientEnv,
         };
       }
       
