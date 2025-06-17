@@ -10,7 +10,7 @@ import {
   CommandItem, 
   CommandList 
 } from '@/components/ui/command';
-import { useUIStore } from '@/store/slices/ui';
+import { useAppStore } from '@/store';
 import { runEmailGeneratorSmokeTest } from '@/utils/diagnoseGemini';
 import { FlaskConical } from 'lucide-react';
 
@@ -24,7 +24,8 @@ interface CommandItem {
 }
 
 export function CommandPalette() {
-  const { isCommandPaletteOpen, toggleCommandPalette } = useUIStore();
+  const isCommandPaletteOpen = useAppStore((state) => state.commandPaletteOpen);
+  const toggleCommandPalette = useAppStore((state) => state.toggleCommandPalette);
   const [search, setSearch] = useState('');
   
   const isDev = process.env.NODE_ENV === 'development';

@@ -112,10 +112,11 @@ Begin your analysis now:`;
 }
 
 // Export standalone function for prompt building with UI settings
-export function buildGeminiPrompt(contact: any, customInstructions?: string): string {
+export async function buildGeminiPrompt(contact: any, customInstructions?: string): Promise<string> {
   // Import store dynamically to avoid circular dependencies
-  const { useEmailStore } = require('@/store/slices/emailStore');
-  const settings = useEmailStore.getState();
+  const { useEmailStore } = await import('@/store/slices/emailStore');
+  const state = useEmailStore.getState();
+  const settings = state.settings;
   
   const settingsInstructions = `
 Email Generation Settings:

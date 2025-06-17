@@ -21,109 +21,123 @@ describe('buildGeminiPrompt', () => {
     vi.clearAllMocks();
   });
   
-  it('should include tone setting in prompt', () => {
-    const { useEmailStore } = require('@/store/slices/emailStore');
+  it('should include tone setting in prompt', async () => {
+    const { useEmailStore } = await import('@/store/slices/emailStore');
     useEmailStore.getState.mockReturnValue({
+      settings: {
       tone: 'professional',
       length: 'medium',
       subjectStyle: 'question',
       cta: 'meeting',
       focusAreas: [],
-      includeFeatures: []
+        includeFeatures: []
+      }
     });
     
-    const prompt = buildGeminiPrompt(mockContact);
+    const prompt = await buildGeminiPrompt(mockContact);
     expect(prompt).toContain('Tone: professional');
   });
   
-  it('should include length setting in prompt', () => {
-    const { useEmailStore } = require('@/store/slices/emailStore');
+  it('should include length setting in prompt', async () => {
+    const { useEmailStore } = await import('@/store/slices/emailStore');
     useEmailStore.getState.mockReturnValue({
+      settings: {
       tone: 'casual',
       length: 'short',
       subjectStyle: 'statement',
       cta: 'demo',
       focusAreas: [],
-      includeFeatures: []
+        includeFeatures: []
+      }
     });
     
-    const prompt = buildGeminiPrompt(mockContact);
+    const prompt = await buildGeminiPrompt(mockContact);
     expect(prompt).toContain('Length: short');
   });
   
-  it('should include subject style in prompt', () => {
-    const { useEmailStore } = require('@/store/slices/emailStore');
+  it('should include subject style in prompt', async () => {
+    const { useEmailStore } = await import('@/store/slices/emailStore');
     useEmailStore.getState.mockReturnValue({
+      settings: {
       tone: 'friendly',
       length: 'long',
       subjectStyle: 'personalized',
       cta: 'trial',
       focusAreas: [],
-      includeFeatures: []
+        includeFeatures: []
+      }
     });
     
-    const prompt = buildGeminiPrompt(mockContact);
+    const prompt = await buildGeminiPrompt(mockContact);
     expect(prompt).toContain('Subject Style: personalized');
   });
   
-  it('should include CTA in prompt', () => {
-    const { useEmailStore } = require('@/store/slices/emailStore');
+  it('should include CTA in prompt', async () => {
+    const { useEmailStore } = await import('@/store/slices/emailStore');
     useEmailStore.getState.mockReturnValue({
+      settings: {
       tone: 'executive',
       length: 'medium',
       subjectStyle: 'benefit',
       cta: 'custom',
       focusAreas: [],
-      includeFeatures: []
+        includeFeatures: []
+      }
     });
     
-    const prompt = buildGeminiPrompt(mockContact);
+    const prompt = await buildGeminiPrompt(mockContact);
     expect(prompt).toContain('Call-to-Action: custom');
   });
   
-  it('should include focus areas when present', () => {
-    const { useEmailStore } = require('@/store/slices/emailStore');
+  it('should include focus areas when present', async () => {
+    const { useEmailStore } = await import('@/store/slices/emailStore');
     useEmailStore.getState.mockReturnValue({
+      settings: {
       tone: 'professional',
       length: 'medium',
       subjectStyle: 'question',
       cta: 'meeting',
       focusAreas: ['cost-savings', 'efficiency'],
-      includeFeatures: []
+        includeFeatures: []
+      }
     });
     
-    const prompt = buildGeminiPrompt(mockContact);
+    const prompt = await buildGeminiPrompt(mockContact);
     expect(prompt).toContain('Focus Areas: cost-savings, efficiency');
   });
   
-  it('should include features when present', () => {
-    const { useEmailStore } = require('@/store/slices/emailStore');
+  it('should include features when present', async () => {
+    const { useEmailStore } = await import('@/store/slices/emailStore');
     useEmailStore.getState.mockReturnValue({
-      tone: 'professional',
-      length: 'medium',
-      subjectStyle: 'question',
-      cta: 'meeting',
-      focusAreas: [],
-      includeFeatures: ['analytics', 'automation']
+      settings: {
+        tone: 'professional',
+        length: 'medium',
+        subjectStyle: 'question',
+        cta: 'meeting',
+        focusAreas: [],
+        includeFeatures: ['analytics', 'automation']
+      }
     });
     
-    const prompt = buildGeminiPrompt(mockContact);
+    const prompt = await buildGeminiPrompt(mockContact);
     expect(prompt).toContain('Include Features: analytics, automation');
   });
   
-  it('should include custom instructions when provided', () => {
-    const { useEmailStore } = require('@/store/slices/emailStore');
+  it('should include custom instructions when provided', async () => {
+    const { useEmailStore } = await import('@/store/slices/emailStore');
     useEmailStore.getState.mockReturnValue({
-      tone: 'professional',
-      length: 'medium',
-      subjectStyle: 'question',
-      cta: 'meeting',
-      focusAreas: [],
-      includeFeatures: []
+      settings: {
+        tone: 'professional',
+        length: 'medium',
+        subjectStyle: 'question',
+        cta: 'meeting',
+        focusAreas: [],
+        includeFeatures: []
+      }
     });
     
     const customInstructions = 'Focus on their recent funding announcement';
-    const prompt = buildGeminiPrompt(mockContact, customInstructions);
+    const prompt = await buildGeminiPrompt(mockContact, customInstructions);
     expect(prompt).toContain(customInstructions);
   });
 });
