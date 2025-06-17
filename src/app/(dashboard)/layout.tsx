@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/slices/authStore'
 import { Sidebar } from '@/components/layouts/Sidebar'
 import { WebSocketProvider } from '@/components/providers/WebSocketProvider'
 import { PresenceIndicator } from '@/components/realtime/PresenceIndicator'
+import { HarperAIGeminiIntegration } from '@/lib/gemini/integration'
 
 export default function DashboardLayout({
   children,
@@ -21,6 +22,12 @@ export default function DashboardLayout({
       router.push('/login')
     } else {
       console.log('✅ Dashboard auth check passed:', { hasToken: !!token, hasUser: !!user })
+      
+      // Initialize window.harperAI for email generation
+      if (typeof window !== 'undefined') {
+        (window as any).harperAI = new HarperAIGeminiIntegration();
+        console.log('🤖 Harper AI integration initialized');
+      }
     }
   }, [token, user, router])
 

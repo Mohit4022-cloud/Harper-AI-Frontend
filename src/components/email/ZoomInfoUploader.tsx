@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { HarperAIGeminiIntegration, ProcessingResult } from '@/lib/gemini/integration'
+import { useEmailPreviewStore } from '@/store/slices/emailPreviewStore'
 import Papa from 'papaparse'
 
 const geminiIntegration = new HarperAIGeminiIntegration();
@@ -22,6 +23,7 @@ export default function ZoomInfoUploader() {
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false)
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const emailPreviewStore = useEmailPreviewStore()
 
   // Check if API key is already set
   const checkApiKey = useCallback(() => {
@@ -92,6 +94,18 @@ export default function ZoomInfoUploader() {
               customInstructions
             )
             setResults(processedResults)
+            
+            // Set emails in preview store
+            const qualifiedEmails = processedResults
+              .filter(r => r.status === 'QUALIFIED' && r.email)
+              .map(r => ({
+                contactId: r.contact.email,
+                email: r.email || '',
+                subject: `Personalized email for ${r.contact.fullName}`
+              }))
+            if (qualifiedEmails.length > 0) {
+              emailPreviewStore.setEmails(qualifiedEmails)
+            }
           } catch (error) {
             setError(error instanceof Error ? error.message : 'Processing failed')
           } finally {

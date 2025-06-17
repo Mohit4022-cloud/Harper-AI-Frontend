@@ -15,12 +15,15 @@ import { useToast } from '@/components/ui/use-toast'
 import { parseCSV, validateCSVStructure } from '@/lib/utils/csvParser'
 import { 
   Mail, Upload, Download, Users, Sparkles, Send, FileText, AlertCircle, Search, TestTube,
-  RotateCcw, Save, HelpCircle, Eye, Shuffle, Copy, Filter, Plus, Calendar, BarChart3, FileDown 
+  RotateCcw, Save, HelpCircle, Eye, Shuffle, Copy, Filter, Plus, Calendar, BarChart3, FileDown,
+  ChevronLeft, ChevronRight, RefreshCw, X
 } from 'lucide-react'
 import { useAuthStore } from '@/store/slices/authStore'
 import { useContactsStore } from '@/store/slices/contactsStore'
 import { useEmailStore } from '@/store/slices/emailStore'
+import { useEmailPreviewStore } from '@/store/slices/emailPreviewStore'
 import { useEmailPresets } from '@/hooks/useEmailPresets'
+import { useEmailAnalytics } from '@/hooks/useEmailAnalytics'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -77,6 +80,9 @@ export default function EmailPage() {
   const [contactFilters, setContactFilters] = useState<any>({})
   
   const [settings, setSettings] = useState<EmailSettings>(emailSettings)
+  
+  const emailPreviewStore = useEmailPreviewStore()
+  const analytics = useEmailAnalytics()
 
   // Load contacts on mount
   useEffect(() => {
@@ -144,6 +150,7 @@ export default function EmailPage() {
     setSelectedContactIds([])
     setSelectedCsvIndices([])
     setGeneratedEmails([])
+    emailPreviewStore.reset()
     toast({ title: "Reset Complete", description: "All settings and selections cleared" })
   }
 
@@ -312,6 +319,19 @@ export default function EmailPage() {
         if (data.errors?.length > 0) {
           setErrors(data.errors.map((e: any) => `${e.contact}: ${e.error}`))
         }
+        
+        // Set emails in preview store for regular email generation
+        const qualifiedEmails = data.results
+          .filter((r: any) => r.email)
+          .map((r: any) => ({
+            contactId: r.contact.id || r.contact.email,
+            email: r.email.body,
+            subject: r.email.subject
+          }))
+        if (qualifiedEmails.length > 0) {
+          emailPreviewStore.setEmails(qualifiedEmails)
+        }
+        
         toast({
           title: "Emails Generated",
           description: `Successfully generated ${data.results.length} personalized emails`
@@ -447,6 +467,53 @@ export default function EmailPage() {
     }
     return null
   }
+  
+  const handleRetryEmail = async () => {
+    const currentEmail = emailPreviewStore.emails[emailPreviewStore.currentEmailIndex]
+    if (!currentEmail) return
+    
+    analytics.track('retry_email', { contactId: currentEmail.contactId })
+    
+    try {
+      const contact = generatedEmails.find(g => 
+        (g.contact.id === currentEmail.contactId) || (g.contact.email === currentEmail.contactId)
+      )?.contact
+      if (!contact) return
+      
+      const response = await fetch('/api/email/personalize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user?.email}`
+        },
+        body: JSON.stringify({
+          csvData: [contact],
+          settings,
+          enableEnrichment: settings.includeFeatures.includes('company-news')
+        })
+      })
+      
+      const data = await response.json()
+      if (data.success && data.results[0]?.email) {
+        emailPreviewStore.updateEmail(emailPreviewStore.currentEmailIndex, data.results[0].email.body)
+        toast({ title: "Email regenerated successfully" })
+      }
+    } catch (error) {
+      toast({ title: "Failed to regenerate email", variant: "destructive" })
+    }
+  }
+  
+  const handleSaveEmail = () => {
+    const textarea = document.getElementById('email-preview') as HTMLTextAreaElement
+    if (!textarea) return
+    
+    emailPreviewStore.updateEmail(emailPreviewStore.currentEmailIndex, textarea.value)
+    toast({ title: "Email saved" })
+  }
+  
+  const currentEmail = emailPreviewStore.emails[emailPreviewStore.currentEmailIndex]
+  const canNavigatePrev = emailPreviewStore.currentEmailIndex > 0
+  const canNavigateNext = emailPreviewStore.currentEmailIndex < emailPreviewStore.emails.length - 1
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
@@ -509,18 +576,19 @@ export default function EmailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Settings Panel */}
-        <div className="lg:col-span-1">
-          <EmailSettingsPanel
-            settings={settings}
-            onSettingsChange={setSettings}
-            previewContact={getPreviewContact()}
-          />
-        </div>
+      <div className="flex gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+          {/* Settings Panel */}
+          <div className="lg:col-span-1">
+            <EmailSettingsPanel
+              settings={settings}
+              onSettingsChange={setSettings}
+              previewContact={getPreviewContact()}
+            />
+          </div>
 
-        {/* Main Content Area */}
-        <div className="lg:col-span-2 space-y-6">
+          {/* Main Content Area */}
+          <div className="lg:col-span-2 space-y-6">
           {/* Contact Selection */}
           <Card>
             <CardHeader>
@@ -874,7 +942,67 @@ export default function EmailPage() {
               </CardContent>
             </Card>
           )}
+          </div>
         </div>
+        
+        {/* Email Preview Panel - Only show when visible */}
+        {emailPreviewStore.isVisible && (
+          <div className="w-96 border-l border-gray-200 bg-white dark:bg-gray-900">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold">Email Preview</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => emailPreviewStore.setVisible(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => emailPreviewStore.setCurrentIndex(emailPreviewStore.currentEmailIndex - 1)}
+                  disabled={!canNavigatePrev}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Prev
+                </Button>
+                <span className="text-sm text-muted-foreground flex-1 text-center">
+                  {emailPreviewStore.currentEmailIndex + 1} / {emailPreviewStore.emails.length}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => emailPreviewStore.setCurrentIndex(emailPreviewStore.currentEmailIndex + 1)}
+                  disabled={!canNavigateNext}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Subject: {currentEmail?.subject}</label>
+                <textarea
+                  id="email-preview"
+                  className="w-full h-96 p-3 border rounded-md font-mono text-sm"
+                  defaultValue={currentEmail?.email || ''}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleSaveEmail} size="sm">
+                  <Save className="h-4 w-4 mr-1" /> Save Edits
+                </Button>
+                <Button onClick={handleRetryEmail} size="sm" variant="outline">
+                  <RefreshCw className="h-4 w-4 mr-1" /> Retry
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Analytics Modal */}

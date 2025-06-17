@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
 
 interface GeneratedEmail {
   contact: any
@@ -9,9 +9,9 @@ interface GeneratedEmail {
   }
 }
 
-export const useEmailAnalytics = (emails: GeneratedEmail[]) => {
-  return useMemo(() => {
-    if (emails.length === 0) {
+export const useEmailAnalytics = (emails?: GeneratedEmail[]) => {
+  const analytics = useMemo(() => {
+    if (!emails || emails.length === 0) {
       return {
         avgWordCount: 0,
         readingLevel: 'N/A',
@@ -81,4 +81,25 @@ export const useEmailAnalytics = (emails: GeneratedEmail[]) => {
       topPersonalizations
     }
   }, [emails])
+  
+  const track = useCallback((event: string, properties?: Record<string, any>) => {
+    // Simple analytics tracking - can be extended with actual analytics service
+    console.log('Analytics Event:', event, properties);
+    
+    // You could integrate with analytics services here:
+    // - Google Analytics
+    // - Mixpanel
+    // - Segment
+    // - PostHog
+    // etc.
+    
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('event', event, properties);
+    }
+  }, []);
+  
+  return {
+    ...analytics,
+    track
+  };
 }

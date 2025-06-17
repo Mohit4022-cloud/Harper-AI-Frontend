@@ -4,6 +4,7 @@ import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { PerformanceProvider } from '@/components/providers/PerformanceProvider'
+import { CommandPalette } from '@/components/CommandPalette'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -32,6 +33,7 @@ export default function RootLayout({
           <PerformanceProvider>
             {children}
             <Toaster />
+            <CommandPalette />
           </PerformanceProvider>
         </ThemeProvider>
       </body>

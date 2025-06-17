@@ -110,3 +110,36 @@ Begin your analysis now:`;
     return this.isInitialized;
   }
 }
+
+// Export standalone function for prompt building with UI settings
+export function buildGeminiPrompt(contact: any, customInstructions?: string): string {
+  // Import store dynamically to avoid circular dependencies
+  const { useEmailStore } = require('@/store/slices/emailStore');
+  const settings = useEmailStore.getState();
+  
+  const settingsInstructions = `
+Email Generation Settings:
+- Tone: ${settings.tone}
+- Length: ${settings.length}
+- Subject Style: ${settings.subjectStyle}
+- Call-to-Action: ${settings.cta}
+${settings.focusAreas?.length > 0 ? `- Focus Areas: ${settings.focusAreas.join(', ')}` : ''}
+${settings.includeFeatures?.length > 0 ? `- Include Features: ${settings.includeFeatures.join(', ')}` : ''}
+
+Please generate the email following these specific settings exactly.
+`;
+
+  const contactInfo = JSON.stringify(contact, null, 2);
+  const baseInstructions = customInstructions || 'Generate a personalized sales email for this contact.';
+  
+  const fullInstructions = `${baseInstructions}
+
+${settingsInstructions}`;
+  
+  return `${MASTER_SYSTEM_PROMPT}
+
+Contact Information:
+${contactInfo}
+
+Instructions: ${fullInstructions}`;
+}
