@@ -66,17 +66,15 @@ export async function apiRequest<T = any>(
   
   try {
     // Add default headers
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    }
+    const headers = new Headers(options.headers)
+    headers.set('Content-Type', 'application/json')
     
     // Add CSRF token for state-changing requests
     const method = options.method?.toUpperCase() || 'GET';
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
       const csrfToken = getCSRFToken();
       if (csrfToken) {
-        headers['x-csrf-token'] = csrfToken;
+        headers.set('x-csrf-token', csrfToken);
       }
     }
     
