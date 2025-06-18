@@ -4,7 +4,7 @@
 
 export interface PasswordStrength {
   score: number; // 0-4
-  feedback: string[];
+  errors: string[];
   isValid: boolean;
 }
 
@@ -18,47 +18,47 @@ export interface PasswordStrength {
  * - Contains special character
  */
 export function validatePasswordStrength(password: string): PasswordStrength {
-  const feedback: string[] = [];
+  const errors: string[] = [];
   let score = 0;
 
   // Length check
   if (password.length >= 8) {
     score++;
   } else {
-    feedback.push('Password must be at least 8 characters long');
+    errors.push('Password must be at least 8 characters long');
   }
 
   // Uppercase check
   if (/[A-Z]/.test(password)) {
     score++;
   } else {
-    feedback.push('Password must contain at least one uppercase letter');
+    errors.push('Password must contain at least one uppercase letter');
   }
 
   // Lowercase check
   if (/[a-z]/.test(password)) {
     score++;
   } else {
-    feedback.push('Password must contain at least one lowercase letter');
+    errors.push('Password must contain at least one lowercase letter');
   }
 
   // Number check
   if (/\d/.test(password)) {
     score++;
   } else {
-    feedback.push('Password must contain at least one number');
+    errors.push('Password must contain at least one number');
   }
 
   // Special character check
   if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
     score++;
   } else {
-    feedback.push('Password must contain at least one special character');
+    errors.push('Password must contain at least one special character');
   }
 
   return {
     score,
-    feedback,
+    errors,
     isValid: score >= 4, // Must pass at least 4 out of 5 checks
   };
 }
