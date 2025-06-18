@@ -1,0 +1,144 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  test-and-build:
+    name: Test and Build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run tests
+      run: npm test
+    
+    - name: Run type check
+      run: npm run type-check
+    
+    - name: Generate Prisma client
+      run: npx prisma generate
+    
+    - name: Build application
+      run: npm run build
+      env:
+        NODE_ENV: production
+        NEXT_PUBLIC_API_URL: ${{ github.event.inputs.environment == 'staging' && secrets.STAGING_API_URL || secrets.PRODUCTION_API_URL }}
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: |
+          .next
+          public
+          package.json
+          package-lock.json
+          prisma
+        retention-days: 7
+
+  deploy-render:
+    name: Deploy to Render
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Deploy to Render
+      env:
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+      run: |
+        curl -X POST "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
+          -H "Authorization: Bearer ${RENDER_API_KEY}" \
+          -H "Content-Type: application/json" \
+          -d '{"clearCache": false}'
+    
+    - name: Wait for deployment
+      run: sleep 60
+    
+    - name: Health check
+      run: |
+        max_attempts=10
+        attempt=0
+        
+        while [ $attempt -lt $max_attempts ]; do
+          if curl -f https://harper-ai-frontend.onrender.com/api/health; then
+            echo "Deployment successful!"
+            exit 0
+          fi
+          
+          echo "Attempt $((attempt + 1))/$max_attempts: Health check failed"
+          sleep 30
+          attempt=$((attempt + 1))
+        done
+        
+        echo "Deployment health check failed"
+        exit 1
+
+  notify-deployment:
+    name: Notify Deployment
+    needs: deploy-render
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Send Slack notification
+      if: env.SLACK_WEBHOOK_URL != ''
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_DEPLOYMENT_WEBHOOK }}
+      run: |
+        STATUS="${{ needs.deploy-render.result }}"
+        COLOR=$([ "$STATUS" = "success" ] && echo "good" || echo "danger")
+        EMOJI=$([ "$STATUS" = "success" ] && echo ":rocket:" || echo ":x:")
+        
+        curl -X POST $SLACK_WEBHOOK_URL \
+          -H 'Content-type: application/json' \
+          -d '{
+            "attachments": [{
+              "color": "'$COLOR'",
+              "title": "'$EMOJI' Deployment '$STATUS'",
+              "fields": [
+                {
+                  "title": "Environment",
+                  "value": "'${{ github.event.inputs.environment || 'production' }}'",
+                  "short": true
+                },
+                {
+                  "title": "Branch",
+                  "value": "'${{ github.ref_name }}'",
+                  "short": true
+                },
+                {
+                  "title": "Commit",
+                  "value": "'${{ github.sha }}'",
+                  "short": false
+                },
+                {
+                  "title": "Deployed by",
+                  "value": "'${{ github.actor }}'",
+                  "short": true
+                }
+              ]
+            }]
+          }'

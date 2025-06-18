@@ -1,0 +1,120 @@
+name: Slack Notifications
+
+on:
+  workflow_run:
+    workflows: ["Playwright Tests", "Lighthouse CI", "Code Coverage"]
+    types:
+      - completed
+
+jobs:
+  notify-slack:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    
+    steps:
+    - name: Send Slack notification
+      uses: slackapi/slack-github-action@v1.24.0
+      with:
+        webhook: ${{ secrets.SLACK_CI_WEBHOOK }}
+        webhook-type: incoming-webhook
+        payload: |
+          {
+            "blocks": [
+              {
+                "type": "header",
+                "text": {
+                  "type": "plain_text",
+                  "text": "🚨 CI Build Failed",
+                  "emoji": true
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Workflow:*\n${{ github.event.workflow_run.name }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Status:*\n❌ Failed"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Branch:*\n${{ github.event.workflow_run.head_branch }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Commit:*\n<${{ github.event.workflow_run.html_url }}|${{ github.event.workflow_run.head_sha }}>"
+                  }
+                ]
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Commit Message:*\n${{ github.event.workflow_run.head_commit.message }}"
+                }
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View Workflow Run",
+                      "emoji": true
+                    },
+                    "url": "${{ github.event.workflow_run.html_url }}",
+                    "style": "danger"
+                  },
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View Commit",
+                      "emoji": true
+                    },
+                    "url": "${{ github.event.workflow_run.head_repository.html_url }}/commit/${{ github.event.workflow_run.head_sha }}"
+                  }
+                ]
+              }
+            ]
+          }
+    
+    - name: Get failed jobs details
+      uses: actions/github-script@v7
+      id: failed-jobs
+      with:
+        script: |
+          const runId = ${{ github.event.workflow_run.id }};
+          const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: runId
+          });
+          
+          const failedJobs = jobs.jobs.filter(job => job.conclusion === 'failure');
+          const failedJobNames = failedJobs.map(job => job.name).join(', ');
+          
+          return failedJobNames;
+    
+    - name: Send detailed failure notification
+      if: steps.failed-jobs.outputs.result
+      uses: slackapi/slack-github-action@v1.24.0
+      with:
+        webhook: ${{ secrets.SLACK_CI_WEBHOOK }}
+        webhook-type: incoming-webhook
+        payload: |
+          {
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Failed Jobs:*\n${{ steps.failed-jobs.outputs.result }}"
+                }
+              }
+            ]
+          }

@@ -1,0 +1,171 @@
+name: Lighthouse CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Install Lighthouse CI
+      run: npm install -g @lhci/cli@0.13.x
+    
+    - name: Build Next.js app
+      run: npm run build
+    
+    - name: Start Next.js server
+      run: |
+        npm start &
+        echo "Waiting for Next.js production server..."
+    
+    - name: Wait for server health check
+      run: |
+        echo "Checking server health..."
+        max_attempts=30
+        attempt=0
+        
+        while [ $attempt -lt $max_attempts ]; do
+          if curl -f http://localhost:3000/favicon.ico >/dev/null 2>&1; then
+            echo "Server is ready!"
+            exit 0
+          fi
+          
+          echo "Attempt $((attempt + 1))/$max_attempts: Server not ready yet..."
+          sleep 2
+          attempt=$((attempt + 1))
+        done
+        
+        echo "Server failed to start within 60 seconds"
+        exit 1
+    
+    - name: Run Lighthouse CI on /email and /contacts
+      run: |
+        lhci autorun \
+          --collect.url=http://localhost:3000/email \
+          --collect.url=http://localhost:3000/contacts \
+          --collect.numberOfRuns=3 \
+          --assert.preset=lighthouse:recommended \
+          --assert.assertions.categories:performance=["error", {"minScore": 0.9}] \
+          --assert.assertions.categories:accessibility=["error", {"minScore": 0.9}] \
+          --assert.assertions.categories:best-practices=["error", {"minScore": 0.9}] \
+          --assert.assertions.categories:seo=["warn", {"minScore": 0.8}] \
+          --upload.target=temporary-public-storage \
+          --output=json \
+          --outputPath=./lighthouse-results.json
+    
+    - name: Generate Lighthouse HTML Reports
+      if: always()
+      run: |
+        mkdir -p lighthouse-reports
+        npx lighthouse http://localhost:3000/email --output=html --output-path=./lighthouse-reports/email.html --chrome-flags="--headless"
+        npx lighthouse http://localhost:3000/contacts --output=html --output-path=./lighthouse-reports/contacts.html --chrome-flags="--headless"
+    
+    - name: Upload Lighthouse JSON results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: lighthouse-results-json
+        path: |
+          lighthouse-results.json
+          .lighthouseci/
+        retention-days: 30
+    
+    - name: Upload Lighthouse HTML reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: lighthouse-reports-html
+        path: lighthouse-reports/
+        retention-days: 30
+    
+    - name: Verify Performance Budgets
+      run: |
+        echo "Checking if Lighthouse budgets were met..."
+        if [ ! -f lighthouse-results.json ]; then
+          echo "No results file found"
+          exit 1
+        fi
+        
+        # Parse and check scores
+        node -e "
+        const results = require('./lighthouse-results.json');
+        let failed = false;
+        
+        for (const [url, runs] of Object.entries(results)) {
+          const scores = runs[0].summary;
+          console.log(\`\${url}:\`);
+          console.log(\`  Performance: \${Math.round(scores.performance * 100)}% (required: 90%)\`);
+          console.log(\`  Accessibility: \${Math.round(scores.accessibility * 100)}% (required: 90%)\`);
+          console.log(\`  Best Practices: \${Math.round(scores['best-practices'] * 100)}% (required: 90%)\`);
+          console.log(\`  SEO: \${Math.round(scores.seo * 100)}% (required: 80%)\`);
+          
+          if (scores.performance < 0.9 || 
+              scores.accessibility < 0.9 || 
+              scores['best-practices'] < 0.9) {
+            failed = true;
+            console.log('  ❌ Budget violation detected!');
+          } else {
+            console.log('  ✅ All budgets met');
+          }
+        }
+        
+        if (failed) {
+          console.log('\nLighthouse budget violations detected!');
+          process.exit(1);
+        }
+        "
+    
+    - name: Comment PR with results
+      uses: actions/github-script@v7
+      if: github.event_name == 'pull_request' && always()
+      with:
+        script: |
+          const fs = require('fs');
+          if (!fs.existsSync('./lighthouse-results.json')) {
+            return;
+          }
+          
+          const results = JSON.parse(fs.readFileSync('./lighthouse-results.json', 'utf8'));
+          
+          let comment = '## 🚨 Lighthouse Results\n\n';
+          comment += '| Page | Performance | Accessibility | Best Practices | SEO |\n';
+          comment += '|------|-------------|---------------|----------------|-----|\n';
+          
+          for (const [url, data] of Object.entries(results)) {
+            const scores = data[0].summary;
+            const perfScore = Math.round(scores.performance * 100);
+            const a11yScore = Math.round(scores.accessibility * 100);
+            const bpScore = Math.round(scores['best-practices'] * 100);
+            const seoScore = Math.round(scores.seo * 100);
+            
+            const perfEmoji = perfScore >= 90 ? '✅' : '❌';
+            const a11yEmoji = a11yScore >= 90 ? '✅' : '❌';
+            const bpEmoji = bpScore >= 90 ? '✅' : '❌';
+            const seoEmoji = seoScore >= 80 ? '✅' : '⚠️';
+            
+            comment += `| ${url} | ${perfEmoji} ${perfScore}% | ${a11yEmoji} ${a11yScore}% | ${bpEmoji} ${bpScore}% | ${seoEmoji} ${seoScore}% |\n`;
+          }
+          
+          comment += '\n**Budget Requirements:** Performance, Accessibility, Best Practices ≥ 90%, SEO ≥ 80%';
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
