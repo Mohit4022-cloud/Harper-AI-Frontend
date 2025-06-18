@@ -6,6 +6,19 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seed...');
 
+  // Create default organization
+  const org = await prisma.organization.upsert({
+    where: { id: 'default-org' },
+    update: {},
+    create: {
+      id: 'default-org',
+      name: 'Harper AI Demo',
+      domain: 'harperai.com',
+      subscription: 'TRIAL',
+    },
+  });
+  console.log('✅ Created organization:', org.name);
+
   // Create admin user
   const adminPassword = await hashPassword('admin123!');
   const admin = await prisma.user.upsert({
@@ -15,8 +28,9 @@ async function main() {
       email: 'admin@harperai.com',
       name: 'Admin User',
       password: adminPassword,
-      role: 'admin',
+      role: 'ORG_ADMIN',
       isActive: true,
+      organizationId: org.id,
     },
   });
   console.log('✅ Created admin user:', admin.email);
@@ -31,8 +45,9 @@ async function main() {
       email: 'demo@harperai.com',
       name: 'Demo User',
       password: demoPassword,
-      role: 'user',
+      role: 'SDR',
       isActive: true,
+      organizationId: org.id,
     },
   });
   console.log('✅ Created demo user:', demoUser.email);
@@ -44,8 +59,9 @@ async function main() {
       email: 'sdr@harperai.com',
       name: 'SDR User',
       password: demoPassword,
-      role: 'sdr',
+      role: 'SDR',
       isActive: true,
+      organizationId: org.id,
     },
   });
   console.log('✅ Created SDR user:', sdrUser.email);
@@ -53,27 +69,36 @@ async function main() {
   // Create some sample contacts for the demo user
   const contacts = [
     {
-      name: 'John Doe',
+      firstName: 'John',
+      lastName: 'Doe',
       email: 'john.doe@example.com',
       phone: '+1234567890',
       company: 'Acme Corp',
-      position: 'CEO',
-      userId: demoUser.id,
+      title: 'CEO',
+      organizationId: org.id,
+      assignedToId: demoUser.id,
+      createdById: demoUser.id,
     },
     {
-      name: 'Jane Smith',
+      firstName: 'Jane',
+      lastName: 'Smith',
       email: 'jane.smith@example.com',
       phone: '+0987654321',
       company: 'Tech Inc',
-      position: 'CTO',
-      userId: demoUser.id,
+      title: 'CTO',
+      organizationId: org.id,
+      assignedToId: demoUser.id,
+      createdById: demoUser.id,
     },
     {
-      name: 'Bob Johnson',
+      firstName: 'Bob',
+      lastName: 'Johnson',
       email: 'bob.johnson@example.com',
       company: 'Startup LLC',
-      position: 'Founder',
-      userId: demoUser.id,
+      title: 'Founder',
+      organizationId: org.id,
+      assignedToId: demoUser.id,
+      createdById: demoUser.id,
     },
   ];
 
