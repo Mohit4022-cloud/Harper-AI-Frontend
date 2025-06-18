@@ -20,7 +20,7 @@ export interface JWTPayload {
   organizationId: string
 }
 
-export function generateTokens(user: User) {
+export function generateTokens(user: Pick<User, 'id' | 'email' | 'role' | 'organizationId'>) {
   const payload: JWTPayload = {
     userId: user.id,
     email: user.email,

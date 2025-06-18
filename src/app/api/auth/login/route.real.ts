@@ -73,8 +73,8 @@ export const POST = withErrorHandler(async (request: Request) => {
     const { token, refreshToken } = generateTokens({
       id: user.id,
       email: user.email,
-      name: user.name,
       role: user.role,
+      organizationId: user.organizationId,
     });
 
     // Remove password from response
