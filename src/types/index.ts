@@ -14,7 +14,7 @@ export interface User {
   phone?: string
 }
 
-export type UserRole = 'org_admin' | 'sales_manager' | 'team_lead' | 'sdr' | 'account_executive'
+export type UserRole = 'ORG_ADMIN' | 'SALES_MANAGER' | 'TEAM_LEAD' | 'SDR' | 'ACCOUNT_EXECUTIVE'
 
 export interface LoginCredentials {
   email: string

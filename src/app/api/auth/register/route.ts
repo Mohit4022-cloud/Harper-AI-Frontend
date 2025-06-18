@@ -58,7 +58,7 @@ export const POST = withErrorHandler(async (request: Request) => {
   const newUser = createUser({
     email,
     name,
-    role: 'sdr', // Default role for new registrations
+    role: 'SDR', // Default role for new registrations
     organizationId: organizationId || 'default-org',
     phone,
   });
