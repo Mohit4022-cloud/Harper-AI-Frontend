@@ -6,7 +6,7 @@
     "dev": "NODE_OPTIONS='--trace-warnings --trace-deprecation' next dev",
     "dev:clean": "./scripts/dev-clean.sh",
     "dev:debug": "DEBUG=\"next:*\" npm run dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "build:analyze": "ANALYZE=true next build",
     "start": "next start",
     "lint": "next lint",
@@ -19,7 +19,8 @@
     "build-storybook": "storybook build",
     "security:check": "npm audit --production",
     "performance:check": "lighthouse https://harper-ai-frontend-2.onrender.com --output json --output-path ./lighthouse-report.json",
-    "prepare": "husky"
+    "prepare": "husky",
+    "postinstall": "prisma generate"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
