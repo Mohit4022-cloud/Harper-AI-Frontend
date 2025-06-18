@@ -40,6 +40,17 @@ function getApiBaseUrl(): string {
 }
 
 /**
+ * Get CSRF token from cookies
+ */
+function getCSRFToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  
+  // Read CSRF token from cookies
+  const match = document.cookie.match(/(?:^|; )csrf-token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/**
  * Make a typed API request with error handling
  * @param endpoint - API endpoint (e.g., '/api/call/start')
  * @param options - Fetch options
@@ -55,9 +66,18 @@ export async function apiRequest<T = any>(
   
   try {
     // Add default headers
-    const headers = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...options.headers,
+    }
+    
+    // Add CSRF token for state-changing requests
+    const method = options.method?.toUpperCase() || 'GET';
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+      const csrfToken = getCSRFToken();
+      if (csrfToken) {
+        headers['x-csrf-token'] = csrfToken;
+      }
     }
     
     // Log the request (client-side only in dev)

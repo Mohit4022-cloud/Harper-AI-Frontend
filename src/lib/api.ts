@@ -45,6 +45,17 @@ export const createApiClient = (endpoint: string) => {
 }
 
 /**
+ * Get CSRF token from cookies
+ */
+function getCSRFToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  
+  // Read CSRF token from cookies
+  const match = document.cookie.match(/(?:^|; )csrf-token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/**
  * Add authentication token to requests
  */
 export const addAuthInterceptor = (client: any) => {
@@ -62,6 +73,16 @@ export const addAuthInterceptor = (client: any) => {
           console.error('Error parsing auth token:', error)
         }
       }
+      
+      // Add CSRF token for state-changing requests
+      const method = config.method?.toUpperCase();
+      if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+        const csrfToken = getCSRFToken();
+        if (csrfToken) {
+          config.headers['x-csrf-token'] = csrfToken;
+        }
+      }
+      
       return config
     },
     (error: any) => {

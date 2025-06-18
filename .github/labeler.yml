@@ -1,0 +1,56 @@
+# Add labels to PRs based on file changes
+
+# Component changes
+"component":
+  - changed-files:
+    - any-glob-to-any-file: 
+      - src/components/**/*
+      - src/components/*
+
+# API changes
+"api":
+  - changed-files:
+    - any-glob-to-any-file:
+      - src/app/api/**/*
+      - src/lib/api-client.ts
+
+# Test changes
+"test":
+  - changed-files:
+    - any-glob-to-any-file:
+      - tests/**/*
+      - jest.config.*
+      - playwright.config.*
+
+# Documentation
+"documentation":
+  - changed-files:
+    - any-glob-to-any-file:
+      - "**/*.md"
+      - docs/**/*
+
+# Dependencies
+"dependencies":
+  - changed-files:
+    - any-glob-to-any-file:
+      - package.json
+      - package-lock.json
+
+# Database
+"database":
+  - changed-files:
+    - any-glob-to-any-file:
+      - prisma/**/*
+
+# CI/CD
+"ci/cd":
+  - changed-files:
+    - any-glob-to-any-file:
+      - .github/**/*
+
+# Security
+"security":
+  - changed-files:
+    - any-glob-to-any-file:
+      - src/lib/security/**/*
+      - src/app/api/auth/**/*

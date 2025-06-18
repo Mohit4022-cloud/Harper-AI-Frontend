@@ -11,7 +11,18 @@ const nextConfig: NextConfig = {
       compilationMode: 'annotation'
     },
     optimizePackageImports: ['@shadcn/ui', 'framer-motion', 'date-fns', '@tanstack/react-query', '@tanstack/react-virtual'],
+    // Enable scroll restoration for better UX
+    scrollRestoration: true,
   },
+  // Enable static optimization for better performance
+  staticPageGenerationTimeout: 120,
+  // Optimize production builds
+  productionBrowserSourceMaps: false,
+  compress: true,
+  poweredByHeader: false,
+  // Configure clean URLs
+  cleanDistDir: true,
+  trailingSlash: false,
   eslint: {
     // Run ESLint during production builds
     ignoreDuringBuilds: false,

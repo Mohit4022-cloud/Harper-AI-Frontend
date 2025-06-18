@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/slices/authStore'
 import { Sidebar } from '@/components/layouts/Sidebar'
 import { WebSocketProvider } from '@/components/providers/WebSocketProvider'
 import { PresenceIndicator } from '@/components/realtime/PresenceIndicator'
+import { SessionMonitor } from '@/components/SessionMonitor'
 import { HarperAIGeminiIntegration } from '@/lib/gemini/integration'
 
 export default function DashboardLayout({
@@ -41,6 +42,7 @@ export default function DashboardLayout({
 
   return (
     <WebSocketProvider>
+      <SessionMonitor />
       <div className="flex h-screen bg-gray-50">
         <Sidebar />
         <main className="flex-1 overflow-y-auto">

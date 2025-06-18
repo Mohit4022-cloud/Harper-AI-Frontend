@@ -6,6 +6,8 @@ services:
     buildCommand: git submodule update --init --recursive && npm ci && npx prisma generate && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
+    # Increase timeout to 60 seconds for serverless functions
+    timeout: 60
     envVars:
       - key: NODE_ENV
         value: production

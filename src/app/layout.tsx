@@ -4,6 +4,7 @@ import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { PerformanceProvider } from '@/components/providers/PerformanceProvider'
+import { PageTransitionProvider } from '@/components/providers/PageTransitionProvider'
 import { CommandPalette } from '@/components/CommandPalette'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -31,9 +32,11 @@ export default function RootLayout({
       <body className={inter.className} suppressHydrationWarning>
         <ThemeProvider>
           <PerformanceProvider>
-            {children}
-            <Toaster />
-            <CommandPalette />
+            <PageTransitionProvider>
+              {children}
+              <Toaster />
+              <CommandPalette />
+            </PageTransitionProvider>
           </PerformanceProvider>
         </ThemeProvider>
       </body>
