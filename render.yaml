@@ -24,17 +24,17 @@ services:
       - key: REFRESH_TOKEN_EXPIRY
         value: 30d
       - key: RATE_LIMIT_WINDOW
-        value: "60000"
+        value: '60000'
       - key: RATE_LIMIT_MAX_REQUESTS
-        value: "100"
+        value: '100'
       - key: LOG_LEVEL
         value: info
       - key: NEXT_PUBLIC_APP_VERSION
-        value: "1.1.0"
+        value: '1.1.0'
     autoDeploy: true
-    branch: main
+    branch: phase-5-deployment-setup-v4
     rootDir: .
-    
+
 databases:
   - name: harper-ai-db
     databaseName: harper_ai
@@ -44,15 +44,15 @@ databases:
 # Build settings
 buildFilter:
   paths:
-  - src/**
-  - public/**
-  - package*.json
-  - prisma/**
-  - next.config.js
-  - tailwind.config.js
-  - tsconfig.json
+    - src/**
+    - public/**
+    - package*.json
+    - prisma/**
+    - next.config.js
+    - tailwind.config.js
+    - tsconfig.json
   ignoredPaths:
-  - README.md
-  - docs/**
-  - scripts/**
-  - "*.md"
+    - README.md
+    - docs/**
+    - scripts/**
+    - '*.md'

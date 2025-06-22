@@ -98,3 +98,7 @@ next.debug.log
 # Temporary files
 README_TEMP.md
 /generated/prisma
+
+# Test artifacts
+test-results/
+playwright-report/

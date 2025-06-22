@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  Calendar, 
-  CalendarPlus, 
-  Clock, 
-  Video, 
+import {
+  Calendar,
+  CalendarPlus,
+  Clock,
+  Video,
   Phone,
   Users,
   ChevronRight,
@@ -21,20 +21,35 @@ import { CalendarHeader } from '@/components/calendar/CalendarHeader'
 import { MonthView } from '@/components/calendar/MonthView'
 import { ListView } from '@/components/calendar/ListView'
 import { EventDialog } from '@/components/calendar/EventDialog'
-import { CalendarEvent, CalendarView, EVENT_TYPE_COLORS } from '@/types/calendar'
+import {
+  CalendarEvent,
+  CalendarView,
+  EVENT_TYPE_COLORS,
+  CalendarEventSchema,
+} from '@/types/calendar'
+import { z } from 'zod'
 import { useToast } from '@/components/ui/use-toast'
-import { 
-  addMonths, 
-  subMonths, 
-  addWeeks, 
-  subWeeks, 
-  addDays, 
+import {
+  addMonths,
+  subMonths,
+  addWeeks,
+  subWeeks,
+  addDays,
   subDays,
   startOfMonth,
   endOfMonth,
   format,
 } from 'date-fns'
 import { cn } from '@/lib/utils'
+
+// Form schema type (matching EventDialog)
+const EventFormSchema = CalendarEventSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+})
+
+type EventFormData = z.infer<typeof EventFormSchema>
 
 export default function CalendarPage() {
   const { toast } = useToast()
@@ -118,28 +133,26 @@ export default function CalendarPage() {
     setShowEventDialog(true)
   }
 
-  const handleSaveEvent = async (eventData: Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleSaveEvent = async (eventData: EventFormData) => {
     if (selectedEvent) {
       await updateEvent(selectedEvent.id, eventData)
     } else {
-      await addEvent(eventData)
+      await addEvent(eventData as Omit<CalendarEvent, 'id' | 'createdAt' | 'updatedAt'>)
     }
   }
 
   // Get events for current view
-  const currentEvents = view === 'list' 
-    ? events.filter(e => new Date(e.startTime) >= new Date())
-    : getEventsForDateRange(
-        startOfMonth(selectedDate),
-        endOfMonth(selectedDate)
-      )
+  const currentEvents =
+    view === 'list'
+      ? events.filter((e) => new Date(e.startTime) >= new Date())
+      : getEventsForDateRange(startOfMonth(selectedDate), endOfMonth(selectedDate))
 
   // Get upcoming events
   const upcomingEvents = getUpcomingEvents(5)
 
   // Stats calculation
   const stats = {
-    todayEvents: events.filter(e => {
+    todayEvents: events.filter((e) => {
       const eventDate = new Date(e.startTime)
       const today = new Date()
       return (
@@ -148,14 +161,14 @@ export default function CalendarPage() {
         eventDate.getFullYear() === today.getFullYear()
       )
     }).length,
-    weekEvents: events.filter(e => {
+    weekEvents: events.filter((e) => {
       const eventDate = new Date(e.startTime)
       const now = new Date()
       const weekFromNow = addDays(now, 7)
       return eventDate >= now && eventDate <= weekFromNow
     }).length,
-    calls: events.filter(e => e.type === 'call' && !e.isCompleted).length,
-    meetings: events.filter(e => e.type === 'meeting' && !e.isCompleted).length,
+    calls: events.filter((e) => e.type === 'call' && !e.isCompleted).length,
+    meetings: events.filter((e) => e.type === 'meeting' && !e.isCompleted).length,
   }
 
   return (
@@ -171,15 +184,10 @@ export default function CalendarPage() {
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => fetchEvents()}
-            disabled={loading}
-          >
+          <Button variant="outline" size="icon" onClick={() => fetchEvents()} disabled={loading}>
             <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
           </Button>
-          <Button 
+          <Button
             className="gradient-purple-pink hover:opacity-90"
             onClick={() => handleAddEvent()}
           >
@@ -271,10 +279,7 @@ export default function CalendarPage() {
                   />
                 )}
                 {view === 'list' && (
-                  <ListView
-                    events={currentEvents}
-                    onEventClick={handleEventClick}
-                  />
+                  <ListView events={currentEvents} onEventClick={handleEventClick} />
                 )}
                 {(view === 'week' || view === 'day') && (
                   <div className="flex items-center justify-center h-96 bg-gray-50 rounded-lg">
@@ -302,9 +307,7 @@ export default function CalendarPage() {
             </CardHeader>
             <CardContent>
               {upcomingEvents.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  No upcoming events
-                </p>
+                <p className="text-sm text-gray-500 text-center py-4">No upcoming events</p>
               ) : (
                 <div className="space-y-3">
                   {upcomingEvents.map((event) => {
@@ -316,9 +319,7 @@ export default function CalendarPage() {
                         className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors"
                       >
                         <div className="flex items-start justify-between mb-1">
-                          <h4 className="font-medium text-sm truncate pr-2">
-                            {event.title}
-                          </h4>
+                          <h4 className="font-medium text-sm truncate pr-2">{event.title}</h4>
                           <Badge
                             variant="secondary"
                             className={cn('text-xs', EVENT_TYPE_COLORS[event.type])}
@@ -371,13 +372,11 @@ export default function CalendarPage() {
                 Schedule for Tomorrow
                 <ChevronRight className="h-4 w-4" />
               </Button>
-              <Button
-                variant="outline"
-                className="w-full justify-between"
-                disabled
-              >
+              <Button variant="outline" className="w-full justify-between" disabled>
                 Sync with Google Calendar
-                <Badge variant="secondary" className="ml-2">Soon</Badge>
+                <Badge variant="secondary" className="ml-2">
+                  Soon
+                </Badge>
               </Button>
             </CardContent>
           </Card>

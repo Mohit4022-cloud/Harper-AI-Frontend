@@ -1,16 +1,17 @@
-import { PrismaClient, User as PrismaUser } from '@prisma/client';
-import { hashPassword } from '@/lib/auth/bcrypt';
+import { PrismaClient, User as PrismaUser } from '@prisma/client'
+import { hashPassword } from '@/lib/auth/bcrypt'
+import { UserRole } from '@/types'
 
 // Create a singleton instance of Prisma Client
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
+const globalForPrisma = global as unknown as { prisma: PrismaClient }
 
 export const prisma =
   globalForPrisma.prisma ||
   new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  });
+  })
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 /**
  * User database operations
@@ -22,7 +23,7 @@ export const userDb = {
   async findByEmail(email: string): Promise<PrismaUser | null> {
     return prisma.user.findUnique({
       where: { email: email.toLowerCase() },
-    });
+    })
   },
 
   /**
@@ -31,28 +32,43 @@ export const userDb = {
   async findById(id: string): Promise<PrismaUser | null> {
     return prisma.user.findUnique({
       where: { id },
-    });
+    })
   },
 
   /**
    * Create a new user
    */
   async create(data: {
-    email: string;
-    password: string;
-    name: string;
-    role?: string;
+    email: string
+    password: string
+    name: string
+    role?: UserRole
   }): Promise<PrismaUser> {
-    const hashedPassword = await hashPassword(data.password);
-    
+    const hashedPassword = await hashPassword(data.password)
+
+    // Get or create default organization
+    let organization = await prisma.organization.findFirst({
+      where: { name: 'Default Organization' },
+    })
+
+    if (!organization) {
+      organization = await prisma.organization.create({
+        data: {
+          name: 'Default Organization',
+          subscription: 'TRIAL',
+        },
+      })
+    }
+
     return prisma.user.create({
       data: {
         email: data.email.toLowerCase(),
         password: hashedPassword,
         name: data.name,
-        role: data.role || 'user',
+        role: (data.role || 'SDR') as UserRole,
+        organizationId: organization.id,
       },
-    });
+    })
   },
 
   /**
@@ -62,19 +78,19 @@ export const userDb = {
     await prisma.user.update({
       where: { id: userId },
       data: { lastLoginAt: new Date() },
-    });
+    })
   },
 
   /**
    * Update user password
    */
   async updatePassword(userId: string, newPassword: string): Promise<void> {
-    const hashedPassword = await hashPassword(newPassword);
-    
+    const hashedPassword = await hashPassword(newPassword)
+
     await prisma.user.update({
       where: { id: userId },
       data: { password: hashedPassword },
-    });
+    })
   },
 
   /**
@@ -83,8 +99,8 @@ export const userDb = {
   async exists(email: string): Promise<boolean> {
     const count = await prisma.user.count({
       where: { email: email.toLowerCase() },
-    });
-    return count > 0;
+    })
+    return count > 0
   },
 
   /**
@@ -93,15 +109,15 @@ export const userDb = {
   async updateProfile(
     userId: string,
     data: {
-      name?: string;
-      phone?: string;
-      avatar?: string;
+      name?: string
+      phone?: string
+      avatar?: string
     }
   ): Promise<PrismaUser> {
     return prisma.user.update({
       where: { id: userId },
       data,
-    });
+    })
   },
 
   /**
@@ -111,6 +127,6 @@ export const userDb = {
     await prisma.user.update({
       where: { id: userId },
       data: { isActive: false },
-    });
+    })
   },
-};
+}

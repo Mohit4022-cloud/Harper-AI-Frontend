@@ -1,76 +1,65 @@
-import { NextRequest } from 'next/server';
-import { userDb } from '@/lib/db/auth';
-import { generateTokens } from '@/lib/jwt';
-import { 
-  withErrorHandler, 
-  AppError, 
-  ErrorTypes, 
+import { NextRequest } from 'next/server'
+import { userDb } from '@/lib/db/auth'
+import { generateTokens } from '@/lib/jwt'
+import {
+  withErrorHandler,
+  AppError,
+  ErrorTypes,
   createApiResponse,
-  simulateDelay 
-} from '@/lib/errorHandler';
-import { validatePasswordStrength } from '@/lib/security/password';
+  simulateDelay,
+} from '@/lib/errorHandler'
+import { validatePasswordStrength } from '@/lib/security/password'
 
 export const POST = withErrorHandler(async (request: Request) => {
   // Simulate network delay in development
-  await simulateDelay(300);
-  
-  const body = await request.json();
-  const { email, password, name, organizationName } = body;
+  await simulateDelay(300)
+
+  const body = await request.json()
+  const { email, password, name, organizationName } = body
 
   // Validate required fields
   if (!email || !password || !name) {
-    throw new AppError(
-      'Email, password, and name are required',
-      ErrorTypes.VALIDATION_ERROR,
-      { 
-        missingFields: { 
-          email: !email, 
-          password: !password, 
-          name: !name 
-        } 
-      }
-    );
+    throw new AppError('Email, password, and name are required', ErrorTypes.VALIDATION_ERROR, {
+      missingFields: {
+        email: !email,
+        password: !password,
+        name: !name,
+      },
+    })
   }
 
   // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (!emailRegex.test(email)) {
-    throw new AppError(
-      'Invalid email format',
-      ErrorTypes.VALIDATION_ERROR,
-      { field: 'email', value: email }
-    );
+    throw new AppError('Invalid email format', ErrorTypes.VALIDATION_ERROR, {
+      field: 'email',
+      value: email,
+    })
   }
 
   // Validate password strength
-  const passwordValidation = validatePasswordStrength(password);
+  const passwordValidation = validatePasswordStrength(password)
   if (!passwordValidation.isValid) {
-    throw new AppError(
-      'Password does not meet requirements',
-      ErrorTypes.VALIDATION_ERROR,
-      { 
-        field: 'password',
-        requirements: {
-          minLength: 8,
-          requireUppercase: true,
-          requireLowercase: true,
-          requireNumbers: true,
-          requireSpecialChars: true
-        },
-        errors: passwordValidation.errors
-      }
-    );
+    throw new AppError('Password does not meet requirements', ErrorTypes.VALIDATION_ERROR, {
+      field: 'password',
+      requirements: {
+        minLength: 8,
+        requireUppercase: true,
+        requireLowercase: true,
+        requireNumbers: true,
+        requireSpecialChars: true,
+      },
+      errors: passwordValidation.errors,
+    })
   }
 
   try {
     // Check if user already exists
-    const existingUser = await userDb.exists(email);
+    const existingUser = await userDb.exists(email)
     if (existingUser) {
-      throw new AppError(
-        'An account with this email already exists',
-        ErrorTypes.CONFLICT,
-        { field: 'email' }
-      );
+      throw new AppError('An account with this email already exists', ErrorTypes.CONFLICT, {
+        field: 'email',
+      })
     }
 
     // Create user in database
@@ -78,8 +67,8 @@ export const POST = withErrorHandler(async (request: Request) => {
       email,
       password,
       name,
-      role: 'user', // Default role
-    });
+      role: 'SDR', // Default role
+    })
 
     // Generate tokens
     const { token, refreshToken } = generateTokens({
@@ -87,13 +76,13 @@ export const POST = withErrorHandler(async (request: Request) => {
       email: user.email,
       role: user.role,
       organizationId: user.organizationId,
-    });
+    })
 
     // Remove password from response
-    const { password: _, ...userWithoutPassword } = user;
+    const { password: _, ...userWithoutPassword } = user
 
     // Log successful registration
-    console.log(`[Auth] New user registered: ${user.email}`);
+    console.log(`[Auth] New user registered: ${user.email}`)
 
     // In a real app, you might want to:
     // 1. Send a welcome email
@@ -108,23 +97,20 @@ export const POST = withErrorHandler(async (request: Request) => {
         refreshToken,
       },
       'Registration successful',
-      { 
+      {
         registrationMethod: 'email',
-        userRole: user.role 
+        userRole: user.role,
       }
-    );
+    )
   } catch (error) {
     // Log error for debugging
-    console.error('[Auth] Registration error:', error);
-    
+    console.error('[Auth] Registration error:', error)
+
     // Re-throw AppErrors, wrap others
     if (error instanceof AppError) {
-      throw error;
+      throw error
     }
-    
-    throw new AppError(
-      'An error occurred during registration',
-      ErrorTypes.INTERNAL_ERROR
-    );
+
+    throw new AppError('An error occurred during registration', ErrorTypes.INTERNAL_ERROR)
   }
-});
+})

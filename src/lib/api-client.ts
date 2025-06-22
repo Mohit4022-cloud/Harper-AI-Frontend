@@ -4,7 +4,7 @@
  * and automatic URL resolution for both client and server contexts
  */
 
-import { logger } from './logger'
+import logger from './logger'
 
 export interface ApiResponse<T = any> {
   success: boolean
@@ -28,14 +28,14 @@ function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     return ''
   }
-  
+
   // Server-side: use env var if explicitly set, otherwise relative
   const baseUrl = process.env.NEXT_PUBLIC_API_URL
   if (baseUrl) {
     // Remove trailing slash if present
     return baseUrl.replace(/\/$/, '')
   }
-  
+
   return ''
 }
 
@@ -43,11 +43,11 @@ function getApiBaseUrl(): string {
  * Get CSRF token from cookies
  */
 function getCSRFToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  
+  if (typeof window === 'undefined') return null
+
   // Read CSRF token from cookies
-  const match = document.cookie.match(/(?:^|; )csrf-token=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : null;
+  const match = document.cookie.match(/(?:^|; )csrf-token=([^;]*)/)
+  return match ? decodeURIComponent(match[1]) : null
 }
 
 /**
@@ -57,47 +57,44 @@ function getCSRFToken(): string | null {
  * @returns Typed response data
  * @throws ApiError with status and details
  */
-export async function apiRequest<T = any>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
+export async function apiRequest<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const baseUrl = getApiBaseUrl()
   const url = `${baseUrl}${endpoint}`
-  
+
   try {
     // Add default headers
     const headers = new Headers(options.headers)
     headers.set('Content-Type', 'application/json')
-    
+
     // Add CSRF token for state-changing requests
-    const method = options.method?.toUpperCase() || 'GET';
+    const method = options.method?.toUpperCase() || 'GET'
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
-      const csrfToken = getCSRFToken();
+      const csrfToken = getCSRFToken()
       if (csrfToken) {
-        headers.set('x-csrf-token', csrfToken);
+        headers.set('x-csrf-token', csrfToken)
       }
     }
-    
+
     // Log the request (client-side only in dev)
     if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       console.log(`API Request: ${options.method || 'GET'} ${url}`)
     }
-    
+
     const response = await fetch(url, {
       ...options,
       headers,
     })
-    
+
     // Parse response
     const contentType = response.headers.get('content-type')
     let data: any
-    
+
     if (contentType?.includes('application/json')) {
       data = await response.json()
     } else {
       data = await response.text()
     }
-    
+
     // Handle non-2xx responses
     if (!response.ok) {
       const error = new Error(
@@ -105,15 +102,15 @@ export async function apiRequest<T = any>(
       ) as ApiError
       error.status = response.status
       error.details = data?.details || data
-      
+
       // Log error (client-side only in dev)
       if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         console.error(`API Error: ${error.message}`, error)
       }
-      
+
       throw error
     }
-    
+
     // Return data directly if it's already the expected format
     // Otherwise wrap in success response
     if (data && typeof data === 'object' && 'success' in data) {
@@ -122,7 +119,7 @@ export async function apiRequest<T = any>(
       }
       return data.data || data
     }
-    
+
     return data
   } catch (error) {
     // Network or parsing errors
@@ -131,16 +128,14 @@ export async function apiRequest<T = any>(
       if ('status' in error) {
         throw error
       }
-      
+
       // Convert to ApiError
-      const apiError = new Error(
-        error.message || 'Network request failed'
-      ) as ApiError
+      const apiError = new Error(error.message || 'Network request failed') as ApiError
       apiError.status = 0 // Network error
       apiError.details = error.message
       throw apiError
     }
-    
+
     // Unknown error
     throw new Error('An unexpected error occurred')
   }
@@ -155,7 +150,7 @@ export const api = {
    */
   get: <T = any>(endpoint: string, options?: RequestInit) =>
     apiRequest<T>(endpoint, { ...options, method: 'GET' }),
-  
+
   /**
    * POST request
    */
@@ -165,7 +160,7 @@ export const api = {
       method: 'POST',
       body: body ? JSON.stringify(body) : undefined,
     }),
-  
+
   /**
    * PUT request
    */
@@ -175,7 +170,7 @@ export const api = {
       method: 'PUT',
       body: body ? JSON.stringify(body) : undefined,
     }),
-  
+
   /**
    * DELETE request
    */
